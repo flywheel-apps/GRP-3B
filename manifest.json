@@ -1,0 +1,36 @@
+{
+  "name": "dicom-metadata-classification",
+  "label": "Metadata Classification: DICOM",
+  "description": "This gear classifies DICOM images and updates the classification metadata of the input file",
+  "version": "0.1.0",
+  "custom": {
+    "gear-builder": {
+      "category": "converter",
+      "image": "flywheel/dicom-metadata-import-grp-3"
+    },
+    "flywheel": {
+      "suite": "Metadata Import and Validation"
+    }
+  },
+  "inputs": {
+    "dicom": {
+      "base": "file",
+      "description": "Dicom Archive",
+      "optional": false,
+      "type": {
+        "enum": [
+          "dicom"
+        ]
+      }
+    }
+  },
+  "config": {},
+  "environment": {},
+  "command": "python run.py",
+  "author": "Flywheel",
+  "maintainer": "Flywheel <support@flywheel.io>",
+  "cite": "",
+  "license": "Other",
+  "source": "https://github.com/flywheel-apps/GRP-3B",
+  "url": ""
+}
