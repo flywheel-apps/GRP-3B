@@ -363,7 +363,7 @@ if __name__ == '__main__':
         output_metadata['acquisition']['files'] = [
             {"classification": dicom_metadata['classification']}
         ]
-        output_metadata['name'] = dicom_name
+        output_metadata['acquisition']['files'][0]['name'] = dicom_name
         pprint.pprint(output_metadata)
         with open(metadata_output_filepath, 'w') as metafile:
             json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
