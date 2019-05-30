@@ -2,8 +2,10 @@
 
 import os
 import json
+import sys
 import logging
 import classification_from_label
+import flywheel
 import re
 import string
 from fnmatch import fnmatch
@@ -11,6 +13,8 @@ import pydicom
 import zipfile
 import pandas as pd
 import pprint
+
+import classify_CT
 
 logging.basicConfig()
 log = logging.getLogger('grp-3B')
@@ -242,7 +246,7 @@ def get_custom_classification(label, config_file):
     return None
 
 
-def process_dicom(zip_file_path, dcm_metadata):
+def process_dicom(zip_file_path):
     if zipfile.is_zipfile(zip_file_path):
         dcm_list = []
         zip_obj = zipfile.ZipFile(zip_file_path)
@@ -286,6 +290,10 @@ def process_dicom(zip_file_path, dcm_metadata):
         df_list.append(df_tmp)
     df = pd.concat(df_list, ignore_index=True, sort=True)
 
+    return df, dcm
+
+
+def classify_MR(df, dcm, dcm_metadata):
     # Determine how many DICOM files are in directory
     slice_number = len(df)
 
@@ -350,13 +358,21 @@ if __name__ == '__main__':
     # Get the current dicom metadata
     dicom_metadata = config['inputs']['dicom']['object']
 
+    # Check that metadata import ran
+    try:
+        dicom_header = dicom_metadata['info']['header']['dicom']
+    except KeyError:
+        print('ERROR: No dicom header information found! Please run metadata import and validation.')
+        sys.exit(1)
+
     # Get the modality
     modality = config['inputs']['dicom']['object']['modality']
 
     output_metadata = dict()
+    df, dcm = process_dicom(dicom_filepath)
     if modality == "MR":
         log.info("Determining MR Classification...")
-        dicom_metadata = process_dicom(dicom_filepath, dicom_metadata)
+        dicom_metadata = classify_MR(df, dcm, dicom_metadata)
         print(dicom_metadata)
         output_metadata['acquisition'] = dict()
 
@@ -367,5 +383,26 @@ if __name__ == '__main__':
         pprint.pprint(output_metadata)
         with open(metadata_output_filepath, 'w') as metafile:
             json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
+    elif modality == 'CT':
+        with flywheel.GearContext() as gear_context:
+            acquisition = gear_context.client.get(gear_context.destination['id'])
+        original_info_object = dicom_metadata['info']
+        classification, info_object = classify_CT.classify_CT(df, dicom_header, acquisition)
+        original_info_object.update(info_object)
+        output_metadata['acquisition'] = dict()
+
+        output_metadata['acquisition']['files'] = [
+            {
+                "classification": classification,
+                "name": dicom_name,
+                "info": original_info_object
+            }
+        ]
+        output_metadata['acquisition']['files'][0]['name'] = dicom_name
+        print(output_metadata)
+        pprint.pprint(output_metadata)
+        with open(metadata_output_filepath, 'w') as metafile:
+            json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
+
 
 
