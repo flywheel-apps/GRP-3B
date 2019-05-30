@@ -2,7 +2,7 @@
   "name": "dicom-metadata-classification",
   "label": "Metadata Classification: DICOM",
   "description": "This gear classifies DICOM images and updates the classification metadata of the input file",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "custom": {
     "gear-builder": {
       "category": "converter",
