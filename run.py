@@ -290,12 +290,12 @@ def process_dicom(zip_file_path):
         df_list.append(df_tmp)
     df = pd.concat(df_list, ignore_index=True, sort=True)
 
+    return df, dcm
+
+
+def classify_MR(df, dcm, dcm_metadata):
     # Determine how many DICOM files are in directory
     slice_number = len(df)
-    return df
-
-
-def classify_MR(df, dcm_metadata):
 
     # Determine whether ImageOrientationPatient is constant
     if hasattr(df, 'ImageOrientationPatient'):
@@ -369,10 +369,10 @@ if __name__ == '__main__':
     modality = config['inputs']['dicom']['object']['modality']
 
     output_metadata = dict()
-    df = process_dicom(dicom_filepath)
+    df, dcm = process_dicom(dicom_filepath)
     if modality == "MR":
         log.info("Determining MR Classification...")
-        dicom_metadata = classify_MR(df, dicom_metadata)
+        dicom_metadata = classify_MR(df, dcm, dicom_metadata)
         print(dicom_metadata)
         output_metadata['acquisition'] = dict()
 
