@@ -126,7 +126,8 @@ def is_localizer(label):
         re.compile('3-plane', re.IGNORECASE),
         re.compile('^loc*', re.IGNORECASE),
         re.compile('Scout', re.IGNORECASE),
-        re.compile('AdjGre', re.IGNORECASE)
+        re.compile('AdjGre', re.IGNORECASE),
+        re.compile('topogram', re.IGNORECASE)
         ]
     return regex_search_label(regexes, label)
 
