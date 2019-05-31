@@ -61,15 +61,21 @@ def is_abdomen(description):
 
 
 def is_head(scan_coverage):
-    return scan_coverage < 250
+    return scan_coverage is not None and scan_coverage < 250
 
 
 def is_whole_body(scan_coverage):
-    return scan_coverage > 1300
+    return scan_coverage is not None and scan_coverage > 1300
 
 
 def is_cap(scan_coverage):
-    return scan_coverage > 800 and scan_coverage < 1300
+    return scan_coverage is not None and scan_coverage > 800 and scan_coverage < 1300
+
+def is_abdomen(description):
+    regexes = [
+        re.compile('abd', re.IGNORECASE)
+    ]
+    return classification_from_label.regex_search_label(regexes)
 
 
 def is_not_contrast(description):
