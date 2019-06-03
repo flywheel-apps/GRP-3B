@@ -156,11 +156,11 @@ def classify_CT(df, single_header_object, acquisition):
         if is_chest(acquisition.label):
             classifications['Anatomy'] = ['Chest']
         elif is_abdomen(acquisition.label):
-            classifications['Anotomy'] = ['Abdomen']
+            classifications['Anatomy'] = ['Abdomen']
         elif is_chest(series_description):
             classifications['Anatomy'] = ['Chest']
         elif is_abdomen(series_description):
-            classifications['Anotomy'] = ['Abdomen']
+            classifications['Anatomy'] = ['Abdomen']
         elif is_head(scan_coverage):
             classifications['Anatomy'] = ['Head']
         elif is_whole_body(scan_coverage):
