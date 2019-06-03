@@ -53,6 +53,13 @@ def is_chest(description):
     return classification_from_label.regex_search_label(regexes, description)
 
 
+def is_abdomen(description):
+    regexes = [
+        re.compile('abd', re.IGNORECASE)
+    ]
+    return classification_from_label.regex_search_label(regexes, description)
+
+
 def is_head(scan_coverage):
     return scan_coverage < 250
 
@@ -146,8 +153,14 @@ def classify_CT(df, single_header_object, acquisition):
 
 
         # Anatomy
-        if is_chest(acquisition.label) or is_chest(series_description):
+        if is_chest(acquisition.label):
             classifications['Anatomy'] = ['Chest']
+        elif is_abdomen(acquisition.label):
+            classifications['Anotomy'] = ['Abdomen']
+        elif is_chest(series_description):
+            classifications['Anatomy'] = ['Chest']
+        elif is_abdomen(series_description):
+            classifications['Anotomy'] = ['Abdomen']
         elif is_head(scan_coverage):
             classifications['Anatomy'] = ['Head']
         elif is_whole_body(scan_coverage):
