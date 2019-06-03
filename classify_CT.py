@@ -74,14 +74,14 @@ def is_cap(scan_coverage):
 
 def is_not_contrast(description):
     regexes = [
-        re.compile('w^o', re.IGNORECASE)
+        re.compile('w\\^o', re.IGNORECASE)
     ]
     return classification_from_label.regex_search_label(regexes, description)
 
 
 def is_contrast(description):
     regexes = [
-        re.compile('w^IV', re.IGNORECASE)
+        re.compile('w\\^IV', re.IGNORECASE)
     ]
     return classification_from_label.regex_search_label(regexes, description)
 
