@@ -87,9 +87,9 @@ def get_param_classification(dcm, slice_number, unique_iop):
     if (te and te < 30) and (tr and tr < 8000):
         classification_dict['Measurement'] = ["T1"]
         log.info('(te and te < 30) and (tr and tr < 8000) -- T1 Measurement')
-    elif (te and te  > 50) and (tr and tr > 2000) and (ti and ti == 0):
+    elif (te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0):
         classification_dict['Measurement'] = ["T2"]
-        log.info('(te and te  > 50) and (tr and tr > 2000) and (ti and ti == 0) -- T2 Measurement')
+        log.info('(te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0) -- T2 Measurement')
     elif (te and te  > 50) and (tr and tr > 8000) and (ti and (3000 > ti > 1500)):
         classification_dict['Measurement'] = ["FLAIR"]
         log.info('(te and te  > 50) and (tr and tr > 8000) and (ti and (3000 > ti > 1500)) -- FLAIR Measurement')
@@ -403,6 +403,3 @@ if __name__ == '__main__':
         pprint.pprint(output_metadata)
         with open(metadata_output_filepath, 'w') as metafile:
             json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
-
-
-
