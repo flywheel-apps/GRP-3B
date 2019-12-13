@@ -6,6 +6,8 @@ Infer acquisition classification by parsing the acquisition label.
 
 import re
 
+import classify_dicom
+
 # Anatomy, T1
 def is_anatomy_t1(label):
     regexes = [
@@ -19,21 +21,21 @@ def is_anatomy_t1(label):
         re.compile('(?=.*mm)(?=.*iso)', re.IGNORECASE),
         re.compile('(?=.*mp)(?=.*rage)', re.IGNORECASE)
     ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Anatomy, T2
 def is_anatomy_t2(label):
     regexes = [
         re.compile('t2', re.IGNORECASE)
     ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Aanatomy, Inplane
 def is_anatomy_inplane(label):
     regexes = [
         re.compile('inplane', re.IGNORECASE)
     ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Anatomy, other
 def is_anatomy(label):
@@ -41,7 +43,7 @@ def is_anatomy(label):
         re.compile('(?=.*IR)(?=.*EPI)', re.IGNORECASE),
         re.compile('flair', re.IGNORECASE)
     ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Diffusion
 def is_diffusion(label):
@@ -53,7 +55,7 @@ def is_diffusion(label):
         re.compile('(?=.*diff)(?=.*dir)', re.IGNORECASE),
         re.compile('hardi', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Diffusion - Derived
 def is_diffusion_derived(label):
@@ -64,7 +66,7 @@ def is_diffusion_derived(label):
         re.compile('_FA$', re.IGNORECASE),
         re.compile('_EXP$', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Functional
 def is_functional(label):
@@ -100,7 +102,7 @@ def is_functional(label):
         re.compile('^Effort', re.IGNORECASE),
         re.compile('emotion|conflict', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Functional, Derived
 def is_functional_derived(label):
@@ -111,7 +113,7 @@ def is_functional_derived(label):
         re.compile('design', re.IGNORECASE),
         re.compile('StartFMRI', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Localizer
 def is_localizer(label):
@@ -129,7 +131,7 @@ def is_localizer(label):
         re.compile('AdjGre', re.IGNORECASE),
         re.compile('topogram', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Shim
 def is_shim(label):
@@ -139,7 +141,7 @@ def is_shim(label):
         re.compile('_HOS_', re.IGNORECASE),
         re.compile('.*shim', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Fieldmap
 def is_fieldmap(label):
@@ -152,7 +154,7 @@ def is_fieldmap(label):
         re.compile('DISTORTION', re.IGNORECASE),
         re.compile('se[-_][aprl]{2}$', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Calibration
 def is_calibration(label):
@@ -161,14 +163,14 @@ def is_calibration(label):
         re.compile('^asset$', re.IGNORECASE),
         re.compile('calibration', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Coil Survey
 def is_coil_survey(label):
     regexes = [
         re.compile('(?=.*coil)(?=.*survey)', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Perfusion: Arterial Spin Labeling
 def is_perfusion(label):
@@ -180,7 +182,7 @@ def is_perfusion(label):
         re.compile('perfusion', re.IGNORECASE),
         re.compile('angio', re.IGNORECASE),
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Proton Density
 def is_proton_density(label):
@@ -190,7 +192,7 @@ def is_proton_density(label):
         re.compile('pd_'),
         re.compile('_pd')
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Phase Map
 def is_phase_map(label):
@@ -198,7 +200,7 @@ def is_phase_map(label):
         re.compile('(?=.*phase)(?=.*map)', re.IGNORECASE),
         re.compile('^phase$', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Screen Save / Screenshot
 def is_screenshot(label):
@@ -207,16 +209,7 @@ def is_screenshot(label):
         re.compile('.*screenshot', re.IGNORECASE),
         re.compile('.*screensave', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
-
-
-
-# Utility:  Check a list of regexes for truthyness
-def regex_search_label(regexes, label):
-    if any(regex.search(label) for regex in regexes):
-            return True
-    else:
-            return False
+    return classify_ALL.regex_search_label(regexes, label)
 
 # Spectroscopy
 def is_spectroscopy(label):
@@ -231,7 +224,7 @@ def is_spectroscopy(label):
         re.compile('press', re.IGNORECASE),
         re.compile('spect', re.IGNORECASE)
         ]
-    return regex_search_label(regexes, label)
+    return classify_ALL.regex_search_label(regexes, label)
 
 
 # Call all functions to determine new label

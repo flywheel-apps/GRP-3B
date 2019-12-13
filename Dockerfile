@@ -14,6 +14,8 @@ WORKDIR /flywheel/v0
 # Copy executables into place
 COPY classification_from_label.py .
 RUN chmod +x classification_from_label.py
+COPY classify_CT.py .
+RUN chmod +x classify_CT.py
 COPY run.py ./run.py
 RUN chmod +x ./run.py
 COPY manifest.json .
