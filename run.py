@@ -12,16 +12,32 @@ import pydicom
 import zipfile
 import pandas as pd
 import pprint
+import ast
 
-import classify_dicom
-import classify_CT
-import classify_MR
-import classification_from_label
+import dicom_processor
+import common_utils
+import CT_classifier
+import MR_classifier
 
 logging.basicConfig()
 log = logging.getLogger('grp-3B')
 
+def log_errors(errors_list):
+    for each_error in errors_list:
+        error_level = each_error[0]
+        error_message = each_error[1]
+        if (error_level == 'debug'):
+            log.debug(error_message)
+        elif (error_level == 'info'):
+            log.info(error_message)
+        elif (error_level == 'warning'):
+            log.warning(error_message)
+        elif (error_level == 'error'):
+            log.error(error_message)
+        elif (error_level == 'exception'):
+            log.exception(error_message)
 
+            
 if __name__ == '__main__':
     # Set paths
     input_folder = '/flywheel/v0/input/file/'
@@ -50,10 +66,13 @@ if __name__ == '__main__':
     modality = config['inputs']['dicom']['object']['modality']
 
     output_metadata = dict()
-    df, dcm = classify_ALL.process_dicom(dicom_filepath)
+    df, dcm, errors_list = dicom_processor.process_dicom(dicom_filepath)
+    log_errors(errors_list)
+    
     if modality == "MR":
         log.info("Determining MR Classification...")
-        dicom_metadata = classify_MR.classify_MR(df, dcm, dicom_metadata)
+        dicom_metadata, errors_list = MR_classifier.classify_MR(df, dcm, dicom_metadata)
+        log_errors(errors_list)
         print(dicom_metadata)
         output_metadata['acquisition'] = dict()
 
@@ -65,10 +84,11 @@ if __name__ == '__main__':
         with open(metadata_output_filepath, 'w') as metafile:
             json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
     elif modality == 'CT':
+        log.info("Determining CT Classification...")
         with flywheel.GearContext() as gear_context:
             acquisition = gear_context.client.get(gear_context.destination['id'])
         original_info_object = dicom_metadata['info']
-        classification, info_object = classify_CT.classify_CT(df, dicom_header, acquisition)
+        classification, info_object = CT_classifier.classify_CT(df, dicom_header, acquisition)
         original_info_object.update(info_object)
         output_metadata['acquisition'] = dict()
 

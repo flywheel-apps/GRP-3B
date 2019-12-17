@@ -12,10 +12,14 @@ RUN pip install -r requirements.txt
 WORKDIR /flywheel/v0
 
 # Copy executables into place
-COPY classification_from_label.py .
-RUN chmod +x classification_from_label.py
-COPY classify_CT.py .
-RUN chmod +x classify_CT.py
+COPY dicom_processor.py .
+RUN chmod +x dicom_processor.py
+COPY common_utils.py .
+RUN chmod +x common_utils.py
+COPY MR_classifier.py .
+RUN chmod +x MR_classifier.py
+COPY CT_classifier.py .
+RUN chmod +x CT_classifier.py
 COPY run.py ./run.py
 RUN chmod +x ./run.py
 COPY manifest.json .
