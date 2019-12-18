@@ -201,7 +201,7 @@ def classify_CT(df, single_header_object, acquisition):
         elif is_whole_body(scan_coverage):
             classifications['Anatomy'] = ['Whole Body']
         elif is_cap(scan_coverage):
-            classifications['Anatomy'] = ['C/A/P']
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
         
         # Contrast
         if is_not_contrast(acquisition.label):
