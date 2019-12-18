@@ -69,6 +69,13 @@ def is_pelvis(description):
     ]
     return common_utils.regex_search_label(regexes, description)
 
+# Anatomy, C/A/P label
+def is_cap_label(description):
+    regexes = [
+        re.compile('(?=.*c)(?=.*a)(?=.*p)', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
+
 # Anatomy, Head
 def is_head(scan_coverage):
     return scan_coverage is not None and scan_coverage < 250
@@ -190,12 +197,16 @@ def classify_CT(df, single_header_object, acquisition):
             classifications['Anatomy'] = ['Abdomen']
         elif is_pelvis(acquisition.label):
             classifications['Anatomy'] = ['Pelvis']
+        elif is_cap_label(acquisition.label):
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
         elif is_chest(series_description):
             classifications['Anatomy'] = ['Chest']
         elif is_abdomen(series_description):
             classifications['Anatomy'] = ['Abdomen']
         elif is_pelvis(series_description):
             classifications['Anatomy'] = ['Pelvis']
+        elif is_cap_label(series_description):
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
         elif is_head(scan_coverage):
             classifications['Anatomy'] = ['Head']
         elif is_whole_body(scan_coverage):
