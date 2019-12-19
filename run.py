@@ -5,19 +5,12 @@ import json
 import sys
 import logging
 import flywheel
-import re
-import string
-from fnmatch import fnmatch
 import pydicom
-import zipfile
-import pandas as pd
 import pprint
-import ast
-
 import dicom_processor
-import common_utils
 import CT_classifier
 import MR_classifier
+
 
 logging.basicConfig()
 log = logging.getLogger('grp-3B')

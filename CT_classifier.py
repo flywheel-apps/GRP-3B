@@ -1,7 +1,4 @@
 import re
-import ast
-
-import dicom_processor
 import common_utils
 
 
@@ -72,7 +69,7 @@ def is_pelvis(description):
 # Anatomy, C/A/P label
 def is_cap_label(description):
     regexes = [
-        re.compile('(?=.*c)(?=.*a)(?=.*p)', re.IGNORECASE)
+        re.compile('(c.?a.?p)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
