@@ -1,8 +1,8 @@
-import classification_from_label
 import re
-import ast
+import common_utils
 
 
+# Standard Scan
 def is_standard_scan(description):
     regexes = [
         re.compile('\\bNAC', re.IGNORECASE),
@@ -10,9 +10,9 @@ def is_standard_scan(description):
         re.compile('_NAC', re.IGNORECASE),
         re.compile('NAC_', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Attenuation Corrected Scan
 def is_attn_corr_scan(description):
     regexes = [
         re.compile('\\bAC', re.IGNORECASE),
@@ -20,120 +20,156 @@ def is_attn_corr_scan(description):
         re.compile('_AC', re.IGNORECASE),
         re.compile('^AC_', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Scan Orientation, Axial
 def is_axial(description):
     regexes = [
         re.compile('axial', re.IGNORECASE),
         re.compile('trans', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Scan Orientation, Coronal
 def is_coronal(description):
     regexes = [
         re.compile('cor', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Scan Orientation, Sagittal
 def is_sagittal(description):
     regexes = [
         re.compile('sag', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Anatomy, Chest
 def is_chest(description):
     regexes = [
         re.compile('lung', re.IGNORECASE),
         re.compile('chest', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Anatomy, Abdomen
 def is_abdomen(description):
     regexes = [
         re.compile('abd', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
+# Anatomy, Pelvis
+def is_pelvis(description):
+    regexes = [
+        re.compile('pelvis', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
 
+# Anatomy, C/A/P label
+def is_cap_label(description):
+    regexes = [
+        re.compile('(c.?a.?p)', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
+
+# Anatomy, Head
 def is_head(scan_coverage):
     return scan_coverage is not None and scan_coverage < 250
 
-
+# Anatomy, Whole Body
 def is_whole_body(scan_coverage):
     return scan_coverage is not None and scan_coverage > 1300
 
-
+# Anatomy, C/A/P
 def is_cap(scan_coverage):
     return scan_coverage is not None and scan_coverage > 800 and scan_coverage < 1300
 
-
+# No Contrast
 def is_not_contrast(description):
     regexes = [
         re.compile('w\\^o', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Contrast
 def is_contrast(description):
     regexes = [
         re.compile('w\\^IV', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Contrast, Arterial Phase
 def is_arterial_phase(description):
     regexes = [
         re.compile('arterial', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Contrast, Portal Venous
 def is_portal_venous(description):
     regexes = [
         re.compile('venous', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
 
-
+# Contrast, Delayed
 def is_delayed(description):
     regexes = [
         re.compile('delayed', re.IGNORECASE),
         re.compile('equil', re.IGNORECASE)
     ]
-    return classification_from_label.regex_search_label(regexes, description)
+    return common_utils.regex_search_label(regexes, description)
+
+# Reconstruction Window, Bone
+def is_bone_window(description):
+    regexes = [
+        re.compile('bone window', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
+
+# Reconstruction Window, Lung
+def is_lung_window(description):
+    regexes = [
+        re.compile('lung window', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
+
 
 
 def classify_CT(df, single_header_object, acquisition):
-    """Classifies a CT dicom series
+    '''
+    Classifies a CT dicom series
 
     Args:
         df (DataFrame): A pandas DataFrame where each row is a dicom image header information
     Returns:
         dict: The dictionary for the CT classification
-    """
+    '''
     series_description = single_header_object.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
-    if classification_from_label.is_localizer(acquisition.label) or classification_from_label.is_localizer(series_description) or len(df) < 10:
+    if common_utils.is_localizer(acquisition.label) or common_utils.is_localizer(series_description) or len(df) < 10:
         classifications['Scan Type'] = ['Localizer']
     else:
-        # SCAN CONVERAGE
-        # put this on the file
+        if single_header_object['ImageType'][0] == 'DERIVED':
+            classifications['Scan Type'] = ['Derived']
+        
         scan_coverage = None
         if single_header_object['ImageType'][0] == 'ORIGINAL':
-            df['ImagePositionPatient-Z'] = df.apply(lambda x: ast.literal_eval(x['ImagePositionPatient'])[2], axis=1)
-            max = df['ImagePositionPatient-Z'].max()
-            min = df['ImagePositionPatient-Z'].min()
-            result = max - min
-            scan_coverage = result if result > 0 else result * -1
+            scan_coverage = common_utils.compute_scan_coverage(df)
         if scan_coverage:
             info_object['ScanCoverage'] = scan_coverage
-
+        
+        # Reconstruction window
+        reconstruction_window = None
+        if is_bone_window(acquisition.label):
+            reconstruction_window = 'Bone'
+        elif is_lung_window(acquisition.label):
+            reconstruction_window = 'Lung'
+        if reconstruction_window:
+            info_object['ReconstructionWindow'] = reconstruction_window
+        
         # Scan orientation from acquisition label
         scan_orientation = None
         if is_axial(acquisition.label):
@@ -151,23 +187,30 @@ def classify_CT(df, single_header_object, acquisition):
         if scan_orientation:
             info_object['ScanOrientation'] = scan_orientation
 
-
         # Anatomy
         if is_chest(acquisition.label):
             classifications['Anatomy'] = ['Chest']
         elif is_abdomen(acquisition.label):
             classifications['Anatomy'] = ['Abdomen']
+        elif is_pelvis(acquisition.label):
+            classifications['Anatomy'] = ['Pelvis']
+        elif is_cap_label(acquisition.label):
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
         elif is_chest(series_description):
             classifications['Anatomy'] = ['Chest']
         elif is_abdomen(series_description):
             classifications['Anatomy'] = ['Abdomen']
+        elif is_pelvis(series_description):
+            classifications['Anatomy'] = ['Pelvis']
+        elif is_cap_label(series_description):
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
         elif is_head(scan_coverage):
             classifications['Anatomy'] = ['Head']
         elif is_whole_body(scan_coverage):
             classifications['Anatomy'] = ['Whole Body']
         elif is_cap(scan_coverage):
-            classifications['Anatomy'] = ['C/A/P']
-
+            classifications['Anatomy'] = ['Chest', 'Abdomen', 'Pelvis']
+        
         # Contrast
         if is_not_contrast(acquisition.label):
             classifications['Contrast'] = ['No Contrast']
@@ -193,9 +236,6 @@ def classify_CT(df, single_header_object, acquisition):
                 classifications['Contrast'] = ['With Contrast']
 
         if scan_coverage:
-            slice_thickness = scan_coverage / len(df)
-            info_object['SliceThickness'] = slice_thickness
+            spacing_between_slices = scan_coverage / len(df)
+            info_object['SpacingBetweenSlices'] = round(spacing_between_slices, 2)
     return classifications, info_object
-
-
-
