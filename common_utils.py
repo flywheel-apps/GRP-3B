@@ -14,10 +14,11 @@ def compute_scan_coverage(df):
 
 # Utility:  Check a list of regexes for truthyness
 def regex_search_label(regexes, label):
-    if any(regex.search(label) for regex in regexes):
-            return True
-    else:
-            return False
+    found = False
+    if type(label) == str:
+        if any(regex.search(label) for regex in regexes):
+            found = True
+    return found
 
         
 # Localizer

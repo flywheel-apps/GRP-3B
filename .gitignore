@@ -1,5 +1,6 @@
-
+.pytest_cache/
 *.xml
 *.iml
 *.xml
 .idea/vcs.xml
+__pycache__
