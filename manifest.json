@@ -6,7 +6,7 @@
   "custom": {
     "gear-builder": {
       "category": "converter",
-      "image": "dicom-metadata-classification:1.1.0"
+      "image": "dicom-metadata-classification:1.1.1"
     },
     "flywheel": {
       "suite": "Metadata Import and Validation"
