@@ -1,6 +1,8 @@
+import logging
 import re
 import ast
 
+log = logging.getLogger(__name__)
 
 # Scan Coverage
 def compute_scan_coverage(df):
@@ -14,10 +16,14 @@ def compute_scan_coverage(df):
 
 # Utility:  Check a list of regexes for truthyness
 def regex_search_label(regexes, label):
-    if any(regex.search(label) for regex in regexes):
-            return True
-    else:
-            return False
+    found = False
+    if type(label) == str:
+        if any(regex.search(label) for regex in regexes):
+            found = True
+    elif isinstance(label, list):
+        if any(regex_search_label(regexes, item) for item in label):
+            found = True
+    return found
 
         
 # Localizer
