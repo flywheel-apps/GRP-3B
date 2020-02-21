@@ -42,7 +42,13 @@ def is_neck_lower_label(description):
         re.compile('(neck.?lower)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
-
+def is_neck_upper_label(description):
+    regexes = [
+        re.compile('Neck w\^IV upper', re.IGNORECASE),
+        re.compile('Neck upper', re.IGNORECASE),
+        re.compile('(neck.?upper)', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, description)
 
 # Anatomy, Head (Scan Coverage)
 def is_head(scan_coverage):
@@ -59,10 +65,7 @@ def is_cap(scan_coverage):
 def is_head_label(description):
     regexes = [
         re.compile('head', re.IGNORECASE),
-        re.compile('brain', re.IGNORECASE),
-        re.compile('Neck w\^IV upper', re.IGNORECASE),
-        re.compile('Neck upper', re.IGNORECASE),
-        re.compile('(neck.?upper)', re.IGNORECASE)
+        re.compile('brain', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 # Anatomy, Neck
@@ -146,11 +149,13 @@ def get_anatomy_classification(label):
         new_anatomy.append(['Head', 'Neck'])
     if is_neck_lower_label(label):
         new_anatomy.append(['Neck', 'Chest'])
+    if is_neck_upper_label(label):
+        new_anatomy.append(['Head', 'Neck'])
     
     ## Anatomy
     if is_head_label(label):
         new_anatomy.append(['Head'])
-    if is_neck_label(label) and not is_neck_lower_label(label) and not is_head_label(label):
+    if is_neck_label(label) and not is_neck_lower_label(label) and not is_neck_upper_label(label):
         new_anatomy.append(['Neck'])
     if is_chest_label(label) and not is_lung_window(label):
         new_anatomy.append(['Chest'])
