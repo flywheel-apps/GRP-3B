@@ -10,25 +10,27 @@ import pprint
 import dicom_processor
 import CT_classifier
 import MR_classifier
+import OPHTHA_classifier
+import PT_classifier
 
 
 logging.basicConfig()
 log = logging.getLogger('grp-3B')
 
-def log_errors(errors_list):
-    for each_error in errors_list:
-        error_level = each_error[0]
-        error_message = each_error[1]
-        if (error_level == 'debug'):
-            log.debug(error_message)
-        elif (error_level == 'info'):
-            log.info(error_message)
-        elif (error_level == 'warning'):
-            log.warning(error_message)
-        elif (error_level == 'error'):
-            log.error(error_message)
-        elif (error_level == 'exception'):
-            log.exception(error_message)
+def log_errors(log_level_message):
+    for each_level_message in log_level_message:
+        log_level = each_level_message[0]
+        log_message = each_level_message[1]
+        if (log_level == 'debug'):
+            log.debug(log_message)
+        elif (log_level == 'info'):
+            log.info(log_message)
+        elif (log_level == 'warning'):
+            log.warning(log_message)
+        elif (log_level == 'error'):
+            log.error(log_message)
+        elif (log_level == 'exception'):
+            log.exception(log_message)
 
             
 if __name__ == '__main__':
@@ -59,13 +61,13 @@ if __name__ == '__main__':
     modality = config['inputs']['dicom']['object']['modality']
 
     output_metadata = dict()
-    df, dcm, errors_list = dicom_processor.process_dicom(dicom_filepath)
-    log_errors(errors_list)
+    df, dcm, log_level_message = dicom_processor.process_dicom(dicom_filepath)
+    log_errors(log_level_message)
     
     if modality == "MR":
         log.info("Determining MR Classification...")
-        dicom_metadata, errors_list = MR_classifier.classify_MR(df, dcm, dicom_metadata)
-        log_errors(errors_list)
+        dicom_metadata, log_level_message = MR_classifier.classify_MR(df, dcm, dicom_metadata)
+        log_errors(log_level_message)
         print(dicom_metadata)
         output_metadata['acquisition'] = dict()
 
@@ -97,3 +99,53 @@ if __name__ == '__main__':
         pprint.pprint(output_metadata)
         with open(metadata_output_filepath, 'w') as metafile:
             json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
+    elif modality == 'PT':
+        log.info("Determining PT Classification...")
+        with flywheel.GearContext() as gear_context:
+            acquisition = gear_context.client.get(gear_context.destination['id'])
+        original_info_object = dicom_metadata['info']
+        classification, info_object = PT_classifier.classify_PT(df, dicom_header, acquisition)
+        original_info_object.update(info_object)
+        output_metadata['acquisition'] = dict()
+
+        output_metadata['acquisition']['files'] = [
+            {
+                "classification": classification,
+                "name": dicom_name,
+                "info": original_info_object
+            }
+        ]
+        output_metadata['acquisition']['files'][0]['name'] = dicom_name
+        print(output_metadata)
+        pprint.pprint(output_metadata)
+        with open(metadata_output_filepath, 'w') as metafile:
+            json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
+    elif modality == 'OPT' or modality == 'OP':
+        log.info("Determining OPHTHA Classification...")
+        with flywheel.GearContext() as gear_context:
+            acquisition = gear_context.client.get(gear_context.destination['id'])
+        
+        original_info_object = dicom_metadata['info']
+        original_classification_object = dicom_metadata['classification']
+        
+        modality, classification = OPHTHA_classifier.classify_OPHTHA(df, dicom_header, acquisition)
+        
+        # original_classification_object.update(classification)
+
+        output_metadata['acquisition'] = dict()
+
+        output_metadata['acquisition']['files'] = [
+            {
+                "classification": classification,
+                "modality": modality,
+                "name": dicom_name
+            }
+        ]
+        output_metadata['acquisition']['files'][0]['name'] = dicom_name
+        # print(output_metadata)
+        pprint.pprint(output_metadata)
+        with open(metadata_output_filepath, 'w') as metafile:
+            json.dump(output_metadata, metafile, separators=(', ', ': '), sort_keys=True, indent=4)
+
+
+
