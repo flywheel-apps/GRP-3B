@@ -6,7 +6,8 @@ import zipfile
 import pandas as pd
 
 
-errors_list =[]
+
+log = logging.getLogger(__name__)
 
 def format_string(in_string):
     formatted = re.sub(r'[^\x00-\x7f]',r'', str(in_string)) # Remove non-ascii characters
@@ -88,9 +89,7 @@ def get_pydicom_header(dcm):
                     else:
                         header[tag] = assign_type(value)
                 else:
-                    error_message = 'No value found for tag: ' + tag
-                    errors_list.append(['debug', error_message])
-                    #log.debug('No value found for tag: ' + tag)
+                    log.debug('No value found for tag: ' + tag)
 
             if type(dcm.get(tag)) == pydicom.sequence.Sequence:
                 seq_data = get_seq_data(dcm.get(tag), exclude_tags)
@@ -98,9 +97,7 @@ def get_pydicom_header(dcm):
                 if seq_data:
                     header[tag] = seq_data
         except:
-            error_message = 'Failed to get ' + tag
-            errors_list.append(['debug', error_message])
-            #log.debug('Failed to get ' + tag)
+            log.debug('Failed to get ' + tag)
             pass
     return header
 
@@ -119,9 +116,7 @@ def process_dicom(zip_file_path):
             dcm_tmp = None
             if os.path.isfile(dcm_path):
                 try:
-                    error_message = 'reading %s' % dcm_path
-                    errors_list.append(['info', error_message])
-                    #log.info('reading %s' % dcm_path)
+                    log.info('reading %s' % dcm_path)
                     dcm_tmp = pydicom.read_file(dcm_path)
                     # Here we check for the Raw Data Storage SOP Class, if there
                     # are other pydicom files in the zip then we read the next one,
@@ -134,15 +129,11 @@ def process_dicom(zip_file_path):
                 except:
                     pass
             else:
-                error_message = '%s does not exist!' % dcm_path
-                errors_list.append(['warning', error_message])
-                #log.warning('%s does not exist!' % dcm_path)
+                log.warning('%s does not exist!' % dcm_path)
         # Select last image
         dcm = dcm_list[-1]
     else:
-        error_message = 'Not a zip. Attempting to read %s directly' % os.path.basename(zip_file_path)
-        errors_list.append(['info', error_message])
-        #log.info('Not a zip. Attempting to read %s directly' % os.path.basename(zip_file_path))
+        log.info('Not a zip. Attempting to read %s directly' % os.path.basename(zip_file_path))
         dcm = pydicom.read_file(zip_file_path)
         dcm_list = [dcm]
 
@@ -159,5 +150,5 @@ def process_dicom(zip_file_path):
         df_list.append(df_tmp)
     df = pd.concat(df_list, ignore_index=True, sort=True)
 
-    return df, dcm, errors_list
+    return df, dcm
 

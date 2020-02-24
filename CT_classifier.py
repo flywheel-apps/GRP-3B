@@ -4,9 +4,13 @@ import common_utils
 from operator import add
 from functools import reduce
 
+log = logging.getLogger(__name__)
+
 SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremity', 'Upper Extremity', 'Whole Body']
+
 ######################################################################################
 ######################################################################################
+
 # Check 'to' in labels for ranged anatomy
 def is_to(description):
     regexes = [
@@ -100,7 +104,6 @@ def is_whole_body(scan_coverage):
 # Anatomy, C/A/P (Scan Coverage)
 def is_cap(scan_coverage):
     return scan_coverage is not None and scan_coverage > 800 and scan_coverage < 1300
-
 
 # Anatomy, Head
 def is_head_label(description):
@@ -236,6 +239,7 @@ def is_delayed_equil(description):
 
 ######################################################################################
 ######################################################################################
+
 def get_scan_type_classification(label, single_header_object):
     new_scan_type = []
     
@@ -384,11 +388,10 @@ def get_reconstruction_window(label):
     if reconstruction_window:
         return reconstruction_window
 
-
 ######################################################################################
 ######################################################################################
 
-def classify_CT(df, single_header_object, acquisition):
+def classify_CT(df, dcm_metadata, acquisition):
     '''
     Classifies a CT dicom series
 
@@ -397,6 +400,8 @@ def classify_CT(df, single_header_object, acquisition):
     Returns:
         dict: The dictionary for the CT classification
     '''
+    log.info("Determining CT Classification...")
+    single_header_object = dcm_metadata['info']['header']['dicom']
     series_description = single_header_object.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
@@ -447,7 +452,14 @@ def classify_CT(df, single_header_object, acquisition):
         if scan_coverage:
             spacing_between_slices = scan_coverage / len(df)
             info_object['SpacingBetweenSlices'] = round(spacing_between_slices, 2)
-    return classifications, info_object
+    
+    if classifications:
+        dcm_metadata['classification'] = classifications
+    
+    if info_object:
+        dcm_metadata['info'].update(info_object)
+
+    return dcm_metadata
 
 
 

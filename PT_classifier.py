@@ -4,6 +4,8 @@ import common_utils
 from operator import add
 from functools import reduce
 
+log = logging.getLogger(__name__)
+
 SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremity', 'Upper Extremity', 'Whole Body']
 ######################################################################################
 ######################################################################################
@@ -223,7 +225,7 @@ def get_anatomy_from_scan_coverage(scan_coverage):
 ######################################################################################
 ######################################################################################
 
-def classify_PT(df, single_header_object, acquisition):
+def classify_PT(df, dcm_metadata, acquisition):
     '''
     Classifies a PT dicom series
 
@@ -232,6 +234,8 @@ def classify_PT(df, single_header_object, acquisition):
     Returns:
         dict: The dictionary for the PT classification
     '''
+    log.info("Determining PT Classification...")
+    single_header_object = dcm_metadata['info']['header']['dicom']
     series_description = single_header_object.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
@@ -251,8 +255,14 @@ def classify_PT(df, single_header_object, acquisition):
             classifications['Anatomy'] = get_anatomy_from_label(series_description)
         if not classifications['Anatomy']:
             classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
-
-    return classifications, info_object
+    
+    if classifications:
+        dcm_metadata['classification'] = classifications
+    
+    if info_object:
+        dcm_metadata['info'].update(info_object)
+    
+    return dcm_metadata
 
 
 

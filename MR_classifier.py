@@ -5,9 +5,7 @@ from fnmatch import fnmatch
 import dicom_processor
 import common_utils
 
-
-log_level_message =[]
-
+log = logging.getLogger(__name__)
 #!/usr/bin/env python
 '''
 Infer acquisition classification by parsing the acquisition label.
@@ -284,8 +282,7 @@ def get_param_classification(dcm, slice_number, unique_iop):
     Get classification based on imaging parameters in DICOM header.
     '''
     classification_dict = {}
-    log_message = 'Attempting to deduce classification from imaging prameters...'
-    log_level_message.append(['info', log_message])
+    log.info('Attempting to deduce classification from imaging prameters...')
     
     tr = dcm.get('RepetitionTime')
     te = dcm.get('EchoTime')
@@ -294,84 +291,67 @@ def get_param_classification(dcm, slice_number, unique_iop):
 
     # Log empty parameters
     if not tr:
-        log_message = 'RepetitionTime unset'
-        log_level_message.append(['warning', log_message])
+        log.warning('RepetitionTime unset')
         
     else:
-        log_message = 'tr=%s' % str(tr)
-        log_level_message.append(['info', log_message])
+        log.info('tr=%s' % str(tr))
         
     if not te:
-        log_message = 'EchoTime unset'
-        log_level_message.append(['warning', log_message])
+        log.warning('EchoTime unset')
         
     else:
-        log_message = 'te=%s' % str(te)
-        log_level_message.append(['info', log_message])
+        log.info('te=%s' % str(te))
         
     if not ti:
-        log_message = 'InversionTime unset'
-        log_level_message.append(['warning', log_message])
+        log.warning('InversionTime unset')
         
     else:
-        log_message = 'ti=%s' % str(ti)
-        log_level_message.append(['info', log_message])
+        log.info('ti=%s' % str(ti))
         
     if not sd:
-        log_message = 'SeriesDescription unset'
-        log_level_message.append(['warning', log_message])
+        log.warning('SeriesDescription unset')
         
     else:
-        log_message = 'sd=%s' % str(sd)
-        log_level_message.append(['info', log_message])
+        log.info('sd=%s' % str(sd))
         
 
     if (te and te < 30) and (tr and tr < 800):
         classification_dict['Measurement'] = ["T1"]
-        log_message = '(te and te < 30) and (tr and tr < 800) -- T1 Measurement'
-        log_level_message.append(['info', log_message])
+        log.info('(te and te < 30) and (tr and tr < 800) -- T1 Measurement')
         
     elif (te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0):
         classification_dict['Measurement'] = ["T2"]
-        log_message = '(te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0) -- T2 Measurement'
-        log_level_message.append(['info', log_message])
+        log.info('(te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0) -- T2 Measurement')
         
     elif (ti and (ti > 0)):
         classification_dict['Measurement'] = ["FLAIR"]
-        log_message = '(ti and (ti > 0)) -- FLAIR Measurement'
-        log_level_message.append(['info', log_message])
+        log.info('(ti and (ti > 0)) -- FLAIR Measurement')
         
     elif (te and te  < 50) and (tr and tr > 1000):
         classification_dict['Measurement'] = ["PD"]
-        log_message = '(te and te  < 50) and (tr and tr > 1000) -- PD Measurement'
-        log_level_message.append(['info', log_message])
-        
+        log.info('(te and te  < 50) and (tr and tr > 1000) -- PD Measurement')
+
 
     if re.search('POST', sd, flags=re.IGNORECASE):
         classification_dict['Custom'] = ['Contrast']
-        log_message = 'POST found in Series Description -- Adding Contrast to custom classification'
-        log_level_message.append(['info', log_message])
+        log.info('POST found in Series Description -- Adding Contrast to custom classification')
         
 
     if slice_number and slice_number < 10:
         classification_dict['Intent'] = ['Localizer']
-        log_message = 'slice_number and slice_number < 10 -- Localizer Intent'
-        log_level_message.append(['info', log_message])
+        log.info('slice_number and slice_number < 10 -- Localizer Intent')
         
 
     if unique_iop:
         classification_dict['Intent'] = ['Localizer']
-        log_message = 'unique_iop found -- Localizer'
-        log_level_message.append(['info', log_message])
+        log.info('unique_iop found -- Localizer')
         
 
     if not classification_dict:
-        log_message = 'Could not determine classification based on parameters!'
-        log_level_message.append(['warning', log_message])
+        log.warning('Could not determine classification based on parameters!')
         
     else:
-        log_message = 'Inferred classification from parameters: %s', classification_dict
-        log_level_message.append(['info', log_message])
+        log.info('Inferred classification from parameters: %s', classification_dict)
         
 
     return classification_dict
@@ -393,9 +373,7 @@ def get_classification_from_string(value):
             if last_key:
                 key = last_key
             else:
-                log_message = 'Unknown classification format: {0}'.format(part)
-                log_level_message.append(['warning', log_message])
-                
+                log.warning('Unknown classification format: {0}'.format(part))
                 key = 'Custom'
             value = part
 
@@ -422,14 +400,12 @@ def get_custom_classification(label, config_file):
         # Check custom classifiers
         classifications = config['inputs'].get('classifications', {}).get('value', {})
         if not classifications:
-            log_message = 'No custom classifications found in config...'
-            log_level_message.append(['debug', log_message])
+            log.debug('No custom classifications found in config...')
             
             return None
 
         if not isinstance(classifications, dict):
-            log_message = 'classifications must be an object!'
-            log_level_message.append(['warning', log_message])
+            log.warning('classifications must be an object!')
             
             return None
 
@@ -437,8 +413,7 @@ def get_custom_classification(label, config_file):
             val = classifications[k]
 
             if not isinstance(val, str):
-                log_message = 'Expected string value for classification key %s', k
-                log_level_message.append(['warning', log_message])
+                log.warning('Expected string value for classification key %s', k)
                 
                 continue
 
@@ -446,24 +421,19 @@ def get_custom_classification(label, config_file):
                 # Regex
                 try:
                     if re.search(k[1:-1], label, re.I):
-                        log_message = 'Matched custom classification for key: %s', k
-                        log_level_message.append(['debug', log_message])
+                        log.debug('Matched custom classification for key: %s', k)
                         
                         return get_classification_from_string(val)
                 except re.error:
-                    log_message = 'Invalid regular expression: %s', k
-                    log_level_message.append(['exception', log_message])
+                    log.exception('Invalid regular expression: %s', k)
                     
             elif fnmatch(label.lower(), k.lower()):
-                log_message = 'Matched custom classification for key: %s', k
-                log_level_message.append(['debug', log_message])
-                
+                log.debug('Matched custom classification for key: %s', k)
+
                 return get_classification_from_string(val)
 
     except IOError:
-        log_message = 'Unable to load config file: %s', config_file
-        log_level_message.append(['exception', log_message])
-        
+        log.exception('Unable to load config file: %s', config_file)
 
     return None
 
@@ -488,17 +458,13 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
     if series_desc:
         classification_dict = get_custom_classification(series_desc, '/flywheel/v0/config.json')
         if classification_dict:
-            log_message = 'Custom classification from config: %s', classification_dict
-            log_level_message.append(['info', log_message])
-            
+            log.info('Custom classification from config: %s', classification_dict)
 
     # 2. Classification from SeriesDescription
     if not classification_dict and series_desc:
         classification_dict = infer_classification(series_desc)
         if classification_dict:
-            log_message = 'Inferred classification from label: %s', classification_dict
-            log_level_message.append(['info', log_message])
-            
+            log.info('Inferred classification from label: %s', classification_dict)
 
     # 3. Classification from Imaging params
     if not classification_dict:
@@ -523,15 +489,13 @@ def classify_MR(df, dcm, dcm_metadata):
         uniqueiop = []
     # Classification (# Only set classification if the modality is MR)
     if dcm_metadata['modality'] == 'MR':
-        log_message = 'MR series detected. Attempting classification...'
-        log_level_message.append(['info', log_message])
-        
+        log.info("Determining MR Classification...")
         classification = classify_dicom(dcm, slice_number, uniqueiop)
         
         if classification:
             dcm_metadata['classification'] = classification
 
-    return dcm_metadata, log_level_message
+    return dcm_metadata
 
 
 

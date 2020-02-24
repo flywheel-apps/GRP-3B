@@ -1,7 +1,9 @@
 import re
 import common_utils
 
+log = logging.getLogger(__name__)
 
+# Laterality, Left
 def is_left(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])L([^a-zA-Z]|$)', re.IGNORECASE),  # match letter L not surrounded by any other letters
@@ -9,7 +11,7 @@ def is_left(description):
     ]
     return common_utils.regex_search_label(regexes, description)
 
-
+# Laterality, Right
 def is_right(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])R([^a-zA-Z]|$)', re.IGNORECASE),  # match letter R not surrounded by any other letters
@@ -17,29 +19,31 @@ def is_right(description):
     ]
     return common_utils.regex_search_label(regexes, description)
 
-
+# Modality, OCT
 def is_OCT(description):
     regexes = [
         re.compile('OCT', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
-
+# Modality, OCT-OP
 def is_OCT_OP(description):
     regexes = [
         re.compile('SD.*OCT.*OP(?!T)', re.IGNORECASE)   # match ...OP, but not ...OPT
     ]
     return common_utils.regex_search_label(regexes, description)
 
-
+# Modality, OCT-OPT
 def is_OCT_OPT(description):
     regexes = [
         re.compile('SD.*OCT.*OPT', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
+######################################################################################
+######################################################################################
 
-def classify_OPHTHA(df, single_header_object, acquisition):
+def classify_OPHTHA(df, dcm_metadata, acquisition):
     """
     Classifies a OCT dicom series
     Args:
@@ -50,7 +54,8 @@ def classify_OPHTHA(df, single_header_object, acquisition):
         str: Modality
         dict: The dictionary for the OCT classification
     """
-
+    log.info("Determining OPHTHA Classification...")
+    single_header_object = dcm_metadata['info']['header']['dicom']
     classifications = {}
 
     # Get Modality
@@ -63,7 +68,7 @@ def classify_OPHTHA(df, single_header_object, acquisition):
         modality = 'CF'
 
 
-    # get Laterality
+    # Get Laterality
     laterality = None
     if single_header_object.get('ImageLaterality') == 'R':
         laterality = 'Right Eye'
@@ -73,12 +78,11 @@ def classify_OPHTHA(df, single_header_object, acquisition):
         laterality = 'Right Eye'
     elif is_left(acquisition.label):
         laterality = 'Left Eye'
-
     if laterality:  # set classification laterality
         classifications.update({"Laterality": [laterality]})
 
 
-    # get OCT Type
+    # Get OCT Type
     oct_type = None
     if single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue'] == 'A-00FBE':
         oct_type = 'Standard'
@@ -95,6 +99,9 @@ def classify_OPHTHA(df, single_header_object, acquisition):
 
     if oct_type:
         classifications.update({"OCT Type": [oct_type]})
+    if classifications:
+        dcm_metadata['classification'] = classifications
+    if modality:
+        dcm_metadata['modality'] = modality
 
-
-    return modality, classifications
+    return dcm_metadata
