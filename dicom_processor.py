@@ -44,30 +44,33 @@ def assign_type(s):
                 return format_string(s)
 
 
-
 def get_seq_data(sequence, ignore_keys):
-    seq_dict = {}
+    """Return list of nested dictionaries matching sequence
+
+    Args:
+        sequence (pydicom.Sequence): A pydicom sequence
+        ignore_keys (list): List of keys to ignore
+
+    Returns:
+        (list): list of nested dictionary matching sequence
+    """
+    res = []
     for seq in sequence:
-        for s_key in seq.dir():
-            s_val = getattr(seq, s_key, '')
-            if type(s_val) is pydicom.UID.UID or s_key in ignore_keys:
+        seq_dict = {}
+        for k, v in seq.items():
+            if not hasattr(v, 'keyword') or \
+                    (hasattr(v, 'keyword') and v.keyword in ignore_keys) or \
+                    (hasattr(v, 'keyword') and not v.keyword):  # keyword of type "" for unknown tags
                 continue
-
-            if type(s_val) == pydicom.sequence.Sequence:
-                _seq = get_seq_data(s_val, ignore_keys)
-                seq_dict[s_key] = _seq
-                continue
-
-            if type(s_val) == str:
-                s_val = format_string(s_val)
+            kw = v.keyword
+            if isinstance(v.value, pydicom.sequence.Sequence):
+                seq_dict[kw] = get_seq_data(v, ignore_keys)
+            elif isinstance(v.value, str):
+                seq_dict[kw] = format_string(v.value)
             else:
-                s_val = assign_type(s_val)
-
-            if s_val:
-                seq_dict[s_key] = s_val
-
-    return seq_dict
-
+                seq_dict[kw] = assign_type(v.value)
+        res.append(seq_dict)
+    return res
 
 
 def get_pydicom_header(dcm):
@@ -75,7 +78,16 @@ def get_pydicom_header(dcm):
     Extract the header values
     '''
     header = {}
-    exclude_tags = ['[Unknown]', 'PixelData', 'Pixel Data',  '[User defined data]', '[Protocol Data Block (compressed)]', '[Histogram tables]', '[Unique image iden]']
+    exclude_tags = ['[Unknown]',
+                    'PixelData',
+                    'Pixel Data',
+                    '[User defined data]',
+                    '[Protocol Data Block (compressed)]',
+                    '[Histogram tables]',
+                    '[Unique image iden]',
+                    'ContourData',
+                    'EncryptedAttributesSequence'
+                    ]
     tags = dcm.dir()
     for tag in tags:
         try:
@@ -92,7 +104,7 @@ def get_pydicom_header(dcm):
                     errors_list.append(['debug', error_message])
                     #log.debug('No value found for tag: ' + tag)
 
-            if type(dcm.get(tag)) == pydicom.sequence.Sequence:
+            if (tag not in exclude_tags) and type(dcm.get(tag)) == pydicom.sequence.Sequence:
                 seq_data = get_seq_data(dcm.get(tag), exclude_tags)
                 # Check that the sequence is not empty
                 if seq_data:
