@@ -1,7 +1,7 @@
 #flywheel/csv-import
 
 # Start with python 3.7
-FROM python:3.7 as base
+FROM python:3.7-slim-stretch as base
 MAINTAINER Flywheel <support@flywheel.io>
 
 # Install pandas
