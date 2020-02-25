@@ -324,8 +324,8 @@ def get_param_classification(dcm, slice_number, unique_iop):
         log.info('(te and te  > 50) and (tr and tr > 2000) and (not ti or ti == 0) -- T2 Measurement')
         
     elif (ti and (ti > 0)):
-        classification_dict['Measurement'] = ["FLAIR"]
-        log.info('(ti and (ti > 0)) -- FLAIR Measurement')
+        classification_dict['Features'] = ["FLAIR"]
+        log.info('(ti and (ti > 0)) -- FLAIR Features')
         
     elif (te and te  < 50) and (tr and tr > 1000):
         classification_dict['Measurement'] = ["PD"]
