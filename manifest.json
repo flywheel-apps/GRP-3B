@@ -23,10 +23,10 @@
         ]
       }
     },
-	"api-key": {
-		"base": "api-key",
-		"read-only": true
-	}
+  "api-key": {
+    "base": "api-key",
+    "read-only": true
+  }
   },
   "config": {},
   "environment": {},
