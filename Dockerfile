@@ -12,7 +12,13 @@ RUN pip install -r requirements.txt
 WORKDIR /flywheel/v0
 
 # Copy executables into place
-COPY run.py ./run.py
+COPY run.py \
+     PT_classifier.py \
+     OPHTHA_classifier.py \
+     MR_classifier.py \
+     dicom_processor.py \
+     common_utils.py \
+     CT_classifier.py /flywheel/v0/
 RUN chmod +x ./run.py
 COPY manifest.json .
 
