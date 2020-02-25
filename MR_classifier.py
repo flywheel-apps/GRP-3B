@@ -4,6 +4,8 @@ import re
 from fnmatch import fnmatch
 import dicom_processor
 import common_utils
+import logging
+
 
 log = logging.getLogger(__name__)
 #!/usr/bin/env python

@@ -5,7 +5,6 @@ import json
 import sys
 import logging
 import flywheel
-import pydicom
 import pprint
 import dicom_processor
 import CT_classifier
@@ -15,7 +14,8 @@ import OPHTHA_classifier
 
 
 logging.basicConfig()
-log = logging.getLogger('grp-3B')
+log = logging.getLogger()
+log.setLevel(logging.INFO)
 
 
 def update_metadata(dcm_metadata, dicom_name):
@@ -87,7 +87,6 @@ if __name__ == '__main__':
         dicom_metadata = PT_classifier.classify_PT(df, dicom_metadata, acquisition)
     elif modality == 'OPT' or modality == 'OP':
         dicom_metadata = OPHTHA_classifier.classify_OPHTHA(df, dicom_metadata, acquisition)
-
 
     output_metadata = update_metadata(dicom_metadata, dicom_name)
     meta_log_string = pprint.pformat(output_metadata)

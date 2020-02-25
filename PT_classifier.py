@@ -3,6 +3,8 @@ import string
 import common_utils
 from operator import add
 from functools import reduce
+import logging
+
 
 log = logging.getLogger(__name__)
 

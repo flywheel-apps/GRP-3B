@@ -4,10 +4,11 @@ import string
 import pydicom
 import zipfile
 import pandas as pd
-
+import logging
 
 
 log = logging.getLogger(__name__)
+
 
 def format_string(in_string):
     formatted = re.sub(r'[^\x00-\x7f]',r'', str(in_string)) # Remove non-ascii characters
@@ -128,7 +129,7 @@ def process_dicom(zip_file_path):
             dcm_tmp = None
             if os.path.isfile(dcm_path):
                 try:
-                    log.info('reading %s' % dcm_path)
+                    log.debug('reading %s' % dcm_path)
                     dcm_tmp = pydicom.read_file(dcm_path)
                     # Here we check for the Raw Data Storage SOP Class, if there
                     # are other pydicom files in the zip then we read the next one,
