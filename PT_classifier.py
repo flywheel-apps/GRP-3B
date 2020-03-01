@@ -5,12 +5,23 @@ from operator import add
 from functools import reduce
 import logging
 
-
 log = logging.getLogger(__name__)
 
-SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremity', 'Upper Extremity', 'Whole Body']
+SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
+
 ######################################################################################
 ######################################################################################
+
+# Check multiple occurrence of anatomy
+def is_multiple_occurrence(label, string):
+    test_string = string.lower()
+    label_lower = label.lower()
+    label_split = re.split(r"[^a-zA-Z0-9\s]|\s+", label_lower)
+    idx = label_split.count(test_string)
+    if idx > 1:
+        return True
+    else:
+        return False
 # Check 'to' in labels for ranged anatomy
 def is_to(description):
     regexes = [
@@ -84,6 +95,7 @@ def is_neck_label(description):
 def is_chest_label(description):
     regexes = [
         re.compile('chest', re.IGNORECASE),
+        re.compile('lung', re.IGNORECASE),
         re.compile('thorax', re.IGNORECASE),
         re.compile('thoracic', re.IGNORECASE),
         re.compile('thoracicspine', re.IGNORECASE)
@@ -107,16 +119,16 @@ def is_pelvis_label(description):
         re.compile('(^|[^a-zA-Z])pv([^a-zA-Z]|$)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
-# Anatomy, Lower Extremity
-def is_lower_extremity(description):
+# Anatomy, Lower Extremities
+def is_lower_extremities(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])le([^a-zA-Z]|$)', re.IGNORECASE),
         re.compile('(lower.?extremity)', re.IGNORECASE),
         re.compile('(lower.?extremities)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
-# Anatomy, Upper Extremity
-def is_upper_extremity(description):
+# Anatomy, Upper Extremities
+def is_upper_extremities(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])ue([^a-zA-Z]|$)', re.IGNORECASE),
         re.compile('(upper.?extremity)', re.IGNORECASE),
@@ -156,6 +168,17 @@ def get_anatomy_classification(label):
     if is_neck_upper_label(label):
         new_anatomy.append(['Head', 'Neck'])
     
+    ## Multiple Anatomy occurrences
+    if is_multiple_occurrence(label, 'neck'):
+        if is_neck_lower_label(label) and is_neck_upper_label(label):
+            new_anatomy.append(['Head', 'Chest'])
+        if is_neck_lower_label(label) and not is_neck_upper_label(label):
+            new_anatomy.append(['Neck', 'Chest'])
+        if not is_neck_lower_label(label) and is_neck_upper_label(label):
+            new_anatomy.append(['Head', 'Neck'])
+    if is_multiple_occurrence(label, 'lung'):
+        new_anatomy.append(['Chest'])
+
     ## Anatomy
     if is_head_label(label):
         new_anatomy.append(['Head'])
@@ -167,10 +190,10 @@ def get_anatomy_classification(label):
         new_anatomy.append(['Abdomen'])
     if is_pelvis_label(label):
         new_anatomy.append(['Pelvis'])  
-    if is_lower_extremity(label):
-        new_anatomy.append(['Lower Extremity'])
-    if is_upper_extremity(label):
-        new_anatomy.append(['Upper Extremity'])    
+    if is_lower_extremities(label):
+        new_anatomy.append(['Lower Extremities'])
+    if is_upper_extremities(label):
+        new_anatomy.append(['Upper Extremities'])    
     if is_whole_body(label):
         new_anatomy.append(['Whole Body'])
     
@@ -258,19 +281,9 @@ def classify_PT(df, dcm_metadata, acquisition):
         if not classifications['Anatomy']:
             classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
     
-    if classifications:
-        dcm_metadata['classification'] = classifications
-    
-    if info_object:
         dcm_metadata['info'].update(info_object)
+
+    dcm_metadata['classification'] = classifications
+        
     
     return dcm_metadata
-
-
-
-
-
-
-
-
-

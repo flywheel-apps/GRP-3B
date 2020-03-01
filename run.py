@@ -75,9 +75,6 @@ if __name__ == '__main__':
         print('ERROR: No dicom header information found! Please run metadata import and validation.')
         sys.exit(1)
     
-    
-    original_info_object = dicom_metadata['info']
-    
 
     if modality == "MR":
         dicom_metadata = MR_classifier.classify_MR(df, dcm, dicom_metadata) 
