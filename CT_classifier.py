@@ -7,11 +7,21 @@ import logging
 
 log = logging.getLogger(__name__)
 
-SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremity', 'Upper Extremity', 'Whole Body']
+SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
 
 ######################################################################################
 ######################################################################################
 
+# Check multiple occurrence of anatomy
+def is_multiple_occurrence(label, string):
+    test_string = string.lower()
+    label_lower = label.lower()
+    label_split = re.split(r"[^a-zA-Z0-9\s]|\s+", label_lower)
+    idx = label_split.count(test_string)
+    if idx > 1:
+        return True
+    else:
+        return False
 # Check 'to' in labels for ranged anatomy
 def is_to(description):
     regexes = [
@@ -125,6 +135,7 @@ def is_neck_label(description):
 def is_chest_label(description):
     regexes = [
         re.compile('chest', re.IGNORECASE),
+        re.compile('lung', re.IGNORECASE),
         re.compile('thorax', re.IGNORECASE),
         re.compile('thoracic', re.IGNORECASE),
         re.compile('thoracicspine', re.IGNORECASE)
@@ -148,16 +159,16 @@ def is_pelvis_label(description):
         re.compile('(^|[^a-zA-Z])pv([^a-zA-Z]|$)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
-# Anatomy, Lower Extremity
-def is_lower_extremity(description):
+# Anatomy, Lower Extremities
+def is_lower_extremities(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])le([^a-zA-Z]|$)', re.IGNORECASE),
         re.compile('(lower.?extremity)', re.IGNORECASE),
         re.compile('(lower.?extremities)', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
-# Anatomy, Upper Extremity
-def is_upper_extremity(description):
+# Anatomy, Upper Extremities
+def is_upper_extremities(description):
     regexes = [
         re.compile('(^|[^a-zA-Z])ue([^a-zA-Z]|$)', re.IGNORECASE),
         re.compile('(upper.?extremity)', re.IGNORECASE),
@@ -272,10 +283,21 @@ def get_anatomy_classification(label):
     if is_hn_label(label):
         new_anatomy.append(['Head', 'Neck'])
     if is_neck_lower_label(label):
-        new_anatomy.append(['Neck', 'Chest'])
+        new_anatomy.append(['Chest'])
     if is_neck_upper_label(label):
-        new_anatomy.append(['Head', 'Neck'])
+        new_anatomy.append(['Head'])
     
+    ## Multiple Anatomy occurrences
+    if is_multiple_occurrence(label, 'neck'):
+        if is_neck_lower_label(label) and is_neck_upper_label(label):
+            new_anatomy.append(['Head', 'Chest'])
+        if is_neck_lower_label(label) and not is_neck_upper_label(label):
+            new_anatomy.append(['Neck', 'Chest'])
+        if not is_neck_lower_label(label) and is_neck_upper_label(label):
+            new_anatomy.append(['Head', 'Neck'])
+    if is_multiple_occurrence(label, 'lung'):
+        new_anatomy.append(['Chest'])
+
     ## Anatomy
     if is_head_label(label):
         new_anatomy.append(['Head'])
@@ -287,10 +309,10 @@ def get_anatomy_classification(label):
         new_anatomy.append(['Abdomen'])
     if is_pelvis_label(label):
         new_anatomy.append(['Pelvis'])  
-    if is_lower_extremity(label):
-        new_anatomy.append(['Lower Extremity'])
-    if is_upper_extremity(label):
-        new_anatomy.append(['Upper Extremity'])    
+    if is_lower_extremities(label):
+        new_anatomy.append(['Lower Extremities'])
+    if is_upper_extremities(label):
+        new_anatomy.append(['Upper Extremities'])    
     if is_whole_body(label):
         new_anatomy.append(['Whole Body'])
     
@@ -350,13 +372,13 @@ def get_contrast_classification(label):
 
     ## Contrast
     if is_arterial(label):
-        new_contrast.append(['Arterial Phase', 'Contrast'])
+        new_contrast.append(['Arterial Phase'])
     if is_portal_venous(label):
-        new_contrast.append(['Portal Venous Phase', 'Contrast'])
+        new_contrast.append(['Portal Venous Phase'])
     if is_delayed_equil(label):
-        new_contrast.append(['Delayed/Equilibrium Phase', 'Contrast'])
+        new_contrast.append(['Delayed/Equilibrium Phase'])
     if is_unenhanced(label):
-        new_contrast.append(['No'])
+        new_contrast.append(['No Contrast'])
     elif is_enhanced(label):
         new_contrast.append(['Contrast'])
     
@@ -453,18 +475,9 @@ def classify_CT(df, dcm_metadata, acquisition):
         if scan_coverage:
             spacing_between_slices = scan_coverage / len(df)
             info_object['SpacingBetweenSlices'] = round(spacing_between_slices, 2)
-    
-    if classifications:
-        dcm_metadata['classification'] = classifications
-    
-    if info_object:
+        
         dcm_metadata['info'].update(info_object)
 
+    dcm_metadata['classification'] = classifications
+
     return dcm_metadata
-
-
-
-
-
-
-

@@ -213,6 +213,18 @@ def is_spectroscopy(label):
         ]
     return common_utils.regex_search_label(regexes, label)
 
+# Post in Series Description
+def is_post(label):
+    found = False
+    if type(label) == str:
+        if re.search('POST', label, flags=re.IGNORECASE):
+            found = True
+    elif isinstance(label, list):
+        if any(is_post(item) for item in label):
+            found = True
+    return found
+
+
 
 
 def infer_classification(label):
@@ -334,7 +346,7 @@ def get_param_classification(dcm, slice_number, unique_iop):
         log.info('(te and te  < 50) and (tr and tr > 1000) -- PD Measurement')
 
 
-    if re.search('POST', sd, flags=re.IGNORECASE):
+    if is_post(sd):
         classification_dict['Custom'] = ['Contrast']
         log.info('POST found in Series Description -- Adding Contrast to custom classification')
         

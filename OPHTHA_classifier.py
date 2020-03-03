@@ -1,6 +1,6 @@
 import re
-import logging
 import common_utils
+import logging
 
 log = logging.getLogger(__name__)
 
@@ -57,49 +57,59 @@ def classify_OPHTHA(df, dcm_metadata, acquisition):
     """
     log.info("Determining OPHTHA Classification...")
     single_header_object = dcm_metadata['info']['header']['dicom']
+    
+    study_description = None
+    if 'StudyDescription' in single_header_object.keys():
+        study_description = single_header_object['StudyDescription']
+    
+    device_code_sequence = None
+    if 'AcquisitionDeviceTypeCodeSequence' in single_header_object.keys():
+        if single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue']:
+            device_code_sequence = single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue']
+
     classifications = {}
 
     # Get Modality
     modality = None
-    if single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue'] == 'A-00FBE':
+    if device_code_sequence and device_code_sequence == 'A-00FBE':
         modality = 'OCT'
     elif is_OCT(acquisition.label):
         modality = 'OCT'
-    elif single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue'] and single_header_object.get('StudyDescription') == 'CF':
+    elif device_code_sequence and study_description and study_description == 'CF':
         modality = 'CF'
 
 
     # Get Laterality
     laterality = None
     if single_header_object.get('ImageLaterality') == 'R':
-        laterality = 'Right Eye'
+        laterality = ['Right Eye']
     elif single_header_object.get('ImageLaterality') == 'L':
-        laterality = 'Left Eye'
+        laterality = ['Left Eye']
     elif is_right(acquisition.label):
-        laterality = 'Right Eye'
+        laterality = ['Right Eye']
     elif is_left(acquisition.label):
-        laterality = 'Left Eye'
+        laterality = ['Left Eye']
     if laterality:  # set classification laterality
-        classifications.update({"Laterality": [laterality]})
+        classifications.update({"Laterality": laterality})
 
 
     # Get OCT Type
     oct_type = None
-    if single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue'] == 'A-00FBE':
-        oct_type = 'Standard'
+    if device_code_sequence and device_code_sequence == 'A-00FBE':
+        oct_type = ['Standard']
         # print("Found match for Standard OCT from AcquisitionDeviceTypeCodeSequence match")
-    elif single_header_object['AcquisitionDeviceTypeCodeSequence']['CodeValue'] == 'A-00E8A':
-        oct_type = 'Fundus'
+    elif device_code_sequence and device_code_sequence == 'A-00E8A':
+        oct_type = ['Fundus']
         # print("Found match for Fundus OCT from AcquisitionDeviceTypeCodeSequence match")
     elif is_OCT_OP(acquisition.label):
-        oct_type = 'Fundus'
+        oct_type = ['Fundus']
         # print("Found match for Fundus OCT from is_OCT_OP match")
     elif is_OCT_OPT(acquisition.label):
-        oct_type = 'Standard'
+        oct_type = ['Standard']
         # print("Found match for Standard OCT from is_OCT_OPT match")
 
     if oct_type:
-        classifications.update({"OCT Type": [oct_type]})
+        classifications.update({"OCT Type": oct_type})
     if classifications:
         dcm_metadata['classification'] = classifications
     if modality:
