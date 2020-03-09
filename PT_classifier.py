@@ -4,6 +4,7 @@ import common_utils
 from operator import add
 from functools import reduce
 import logging
+import abc
 
 log = logging.getLogger(__name__)
 
@@ -247,6 +248,130 @@ def get_anatomy_from_scan_coverage(scan_coverage):
         new_anatomy = list(set(new_anatomy))
     return new_anatomy
 
+
+class Classifier(abc.ABC):
+
+    def __init__(self, single_header_object: dict, acquisition,
+                 classifications: dict = {}, info_object: dict = {}):
+        """
+        single_header_object: this is just the GIP dicom header info similar
+            to file.info['header']['dicom'].
+        """
+        self.single_header_object = single_header_object
+        self.classifications = classifications
+        self.info_object = info_object
+        self.acquisition = acquisition
+        self.label = acquisition.label
+
+    @abc.abstractmethod
+    def classify(self):
+        pass
+
+    def get_dicom_tag(self, dicom_tag_key: str):
+        """
+        Gets a dicom tag from a dicom header.
+
+        The header is a Flywheel dictionary object, so nested dicom
+        properties are simply nested dictionaries.
+
+        dicom_tag_key: str
+            The format of this should be "['tag']['tag_nested'][
+            'tag_nested_nested']"
+        """
+
+        try:
+            dicom_tag = eval("self.single_header_object" + dicom_tag_key)
+        except (AttributeError, IndexError):
+            dicom_tag = None
+
+        # if it's an empty value (e.g., '' or []), then set as None
+        if not dicom_tag:
+            dicom_tag = None
+
+        return dicom_tag
+
+    def append_classification(self, key, value):
+        self.classifications = self.classifications.get(key).append(value)
+
+
+class IsotopeClassifier(Classifier):
+
+    def __init__(self, single_header_object: dict, acquisition,
+                 classifications: dict = {}, info_object: dict = {}):
+        super().__init__(single_header_object=single_header_object,
+                         classifications=classifications,
+                         info_object=info_object,
+                         acquisition=acquisition)
+        # get CodeValue of Isotope
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
+                        "['RadionuclideCodeSequence']['CodeValue']"
+        self.code_value = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
+
+        # get CodeMeaning of Isotope. Convert to lowercase if str is found.
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
+                        "['RadionuclideCodeSequence']['CodeMeaning']"
+        code_meaning = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
+        if type(code_meaning) == str:
+            code_meaning = code_meaning.lower()
+        self.code_meaning = code_meaning
+
+        # get CodeMeaning of Tracer. Sometimes F18 info is in this.
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
+                        "['RadiopharmaceuticalCodeSequence']['CodeMeaning']"
+        code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
+        if type(code_meaning) == str:
+            code_meaning_tracer = code_meaning_tracer.lower()
+        self.code_meaning_tracer = code_meaning_tracer
+
+    def classify(self):
+        # Classify isotopes
+        self.classify_f18()
+
+        return self.classifications
+
+    def classify_f18(self):
+
+        isotope_f18 = None
+
+        # classify based on code value first
+        if self.code_value == 'C-111A1':
+            isotope_f18 = 'F18'
+
+        # classify based on code meaning if none is found
+        if not isotope_f18:
+            if self.code_meaning:
+                code_meaning = self.code_meaning
+                if ('18' in code_meaning) and ('f' in code_meaning):
+                    isotope_f18 = 'F18'
+
+        # classify based on Tracer code meaning
+        if not isotope_f18:
+            if self.code_meaning_tracer:
+                code_meaning = self.code_meaning_tracer
+                if 'f^18' in code_meaning:
+                    isotope_f18 = 'F18'
+
+        if isotope_f18:
+            self.append_classification(key='Isotope', value=isotope_f18)
+
+
+class ProcessingClassifier(Classifier):
+
+    @staticmethod
+    def classify_processing():
+        pass
+
+
+class TracerClassifier(Classifier):
+
+    @staticmethod
+    def classify_tracer():
+        pass
+
+    @staticmethod
+    def classify_type():
+        pass
+
 ######################################################################################
 ######################################################################################
 
@@ -281,6 +406,14 @@ def classify_PT(df, dcm_metadata, acquisition):
         if not classifications['Anatomy']:
             classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
     
+        # Isotope
+
+        # Processing
+
+        # Tracer
+
+        # Type
+
         dcm_metadata['info'].update(info_object)
 
     dcm_metadata['classification'] = classifications

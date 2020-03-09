@@ -43,14 +43,12 @@ def update_metadata(dcm_metadata, dicom_name):
     return output_metadata
 
 
-            
 if __name__ == '__main__':
     # Set paths
     input_folder = '/flywheel/v0/input/file/'
     output_folder = '/flywheel/v0/output/'
     config_file_path = '/flywheel/v0/config.json'
     metadata_output_filepath = os.path.join(output_folder, '.metadata.json')
-
 
     # Load config file
     with open(config_file_path) as config_data:
@@ -66,7 +64,6 @@ if __name__ == '__main__':
     with flywheel.GearContext() as gear_context:
             acquisition = gear_context.client.get(gear_context.destination['id'])
     df, dcm = dicom_processor.process_dicom(dicom_filepath)
-    
 
     # Check that metadata import ran
     try:
@@ -74,7 +71,6 @@ if __name__ == '__main__':
     except KeyError:
         print('ERROR: No dicom header information found! Please run metadata import and validation.')
         sys.exit(1)
-    
 
     if modality == "MR":
         dicom_metadata = MR_classifier.classify_MR(df, dcm, dicom_metadata) 
