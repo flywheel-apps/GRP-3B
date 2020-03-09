@@ -250,6 +250,20 @@ def get_anatomy_from_scan_coverage(scan_coverage):
 
 
 class Classifier(abc.ABC):
+    """
+    An abstract base class that's the component in the composite design
+    pattern.
+
+    All children will define the method 'classify', which returns
+    classifications and info_object parameters. Any new classification
+    method within children shall be added to the 'classify' method of each
+    child, and each classification method shall update parameter
+    'classification', 'info_object', or both.
+
+    The composite class 'Classifiers' will be used to perform all
+    classifications. To do so, all children of 'Classifer' (e.g.,
+    components) shall be added to 'Classifiers'.
+    """
 
     def __init__(self, single_header_object: dict, acquisition,
                  classifications: dict = {}, info_object: dict = {}):
@@ -265,6 +279,7 @@ class Classifier(abc.ABC):
 
     @abc.abstractmethod
     def classify(self):
+        # Always return self.classifications, self.info_object
         pass
 
     def get_dicom_tag(self, dicom_tag_key: str):
@@ -281,7 +296,7 @@ class Classifier(abc.ABC):
 
         try:
             dicom_tag = eval("self.single_header_object" + dicom_tag_key)
-        except (AttributeError, IndexError):
+        except (AttributeError, IndexError, KeyError):
             dicom_tag = None
 
         # if it's an empty value (e.g., '' or []), then set as None
@@ -290,8 +305,25 @@ class Classifier(abc.ABC):
 
         return dicom_tag
 
-    def append_classification(self, key, value):
-        self.classifications = self.classifications.get(key).append(value)
+    def append_to_param(self, key, value, param):
+        """
+        Appends a new key value pair to either 'classifications' or
+        'info_object' parameter.
+        """
+        if param == 'classifications':
+            dict_out = self.classifications
+        elif param == 'info_object':
+            dict_out = self.info_object
+        else:
+            raise ValueError("param should be 'classifications' or "
+                             "'info_object', not {}".format(param))
+
+        if key in dict_out:
+            dict_out[key].append(value)
+        else:
+            value = [value]
+            dict_out[key] = value
+        exec("self." + param + " = dict_out")
 
 
 class IsotopeClassifier(Classifier):
@@ -319,7 +351,7 @@ class IsotopeClassifier(Classifier):
         dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
                         "['RadiopharmaceuticalCodeSequence']['CodeMeaning']"
         code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-        if type(code_meaning) == str:
+        if type(code_meaning_tracer) == str:
             code_meaning_tracer = code_meaning_tracer.lower()
         self.code_meaning_tracer = code_meaning_tracer
 
@@ -327,7 +359,7 @@ class IsotopeClassifier(Classifier):
         # Classify isotopes
         self.classify_f18()
 
-        return self.classifications
+        return self.classifications, self.info_object
 
     def classify_f18(self):
 
@@ -352,10 +384,18 @@ class IsotopeClassifier(Classifier):
                     isotope_f18 = 'F18'
 
         if isotope_f18:
-            self.append_classification(key='Isotope', value=isotope_f18)
+            self.append_to_param(key='Isotope', value=isotope_f18,
+                                 param='classifications')
 
 
 class ProcessingClassifier(Classifier):
+
+    def __init__(self, single_header_object: dict, acquisition,
+                 classifications: dict = {}, info_object: dict = {}):
+        super().__init__(single_header_object=single_header_object,
+                         classifications=classifications,
+                         info_object=info_object,
+                         acquisition=acquisition)
 
     @staticmethod
     def classify_processing():
@@ -371,6 +411,13 @@ class TracerClassifier(Classifier):
     @staticmethod
     def classify_type():
         pass
+
+
+class Classifiers(Classifier):
+    """
+
+    """
+    pass
 
 ######################################################################################
 ######################################################################################
