@@ -14,7 +14,7 @@
   },
   "inputs": {
     "dicom": {
-      "base": "file"
+      "base": "file",
       "description": "Dicom Archive",
       "optional": false,
       "type": {
