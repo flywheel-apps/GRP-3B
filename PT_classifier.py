@@ -337,6 +337,7 @@ class IsotopeClassifier(Classifier):
                          info_object=info_object,
                          acquisition=acquisition)
         # get CodeValue of Isotope
+        log.info(self.single_header_object)
         dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
                         "['RadionuclideCodeSequence']['CodeValue']"
         self.code_value = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
