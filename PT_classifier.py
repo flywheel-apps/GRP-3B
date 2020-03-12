@@ -338,21 +338,21 @@ class IsotopeClassifier(Classifier):
                          acquisition=acquisition)
         # get CodeValue of Isotope
         log.info(self.single_header_object)
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadionuclideCodeSequence']['CodeValue']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadionuclideCodeSequence'][0]['CodeValue']"
         self.code_value = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
 
         # get CodeMeaning of Isotope. Convert to lowercase if str is found.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadionuclideCodeSequence']['CodeMeaning']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadionuclideCodeSequence'][0]['CodeMeaning']"
         code_meaning = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
         if type(code_meaning) == str:
             code_meaning = code_meaning.lower()
         self.code_meaning = code_meaning
 
         # get CodeMeaning of Tracer. Sometimes F18 info is in this.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadiopharmaceuticalCodeSequence']['CodeMeaning']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadiopharmaceuticalCodeSequence'][0]['CodeMeaning']"
         code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
         if type(code_meaning_tracer) == str:
             code_meaning_tracer = code_meaning_tracer.lower()
@@ -448,22 +448,23 @@ class TracerClassifier(Classifier):
                          acquisition=acquisition)
 
         # get CodeValue of Tracer.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadiopharmaceuticalCodeSequence']['CodeValue']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadiopharmaceuticalCodeSequence'][0]['CodeValue']"
         self.code_value_tracer = self.get_dicom_tag(
             dicom_tag_key=dicom_tag_key)
 
         # get CodeMeaning of Tracer.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadiopharmaceuticalCodeSequence']['CodeMeaning']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadiopharmaceuticalCodeSequence'][0]['CodeMeaning']"
         code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
         if type(code_meaning_tracer) == str:
             code_meaning_tracer = code_meaning_tracer.lower()
         self.code_meaning_tracer = code_meaning_tracer
 
         # get 'Radiopharmaceutical' from 'RadionuclideCodeSequence'
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence']" \
-                        "['RadionuclideCodeSequence']['Radiopharmaceutical']"
+        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
+                        "['RadionuclideCodeSequence'][0][" \
+                        "'Radiopharmaceutical']"
         radiopharma = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
         if type(radiopharma) == str:
             radiopharma = radiopharma.lower()
