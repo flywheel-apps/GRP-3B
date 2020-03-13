@@ -18,28 +18,28 @@ log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 
-def update_metadata(dcm_metadata, dicom_name):
+def update_metadata(dcm_metadata, dicom_name, modality):
     
     output_metadata = dict()
     output_metadata['acquisition'] = dict()
 
     if modality == 'MR':
         output_metadata['acquisition']['files'] = [
-            {"classification": dcm_metadata['classification']}
+            {"classification": dcm_metadata['classification'],
+             "name": dicom_name}
         ]
-    if modality == 'CT' or modality == 'PT':
+    elif modality == 'CT' or modality == 'PT':
         output_metadata['acquisition']['files'] = [
             {"classification": dcm_metadata['classification'],
              "name": dicom_name,
              "info": dcm_metadata['info']}
         ]
-    if modality == 'OPT' or modality == 'OP':
+    elif modality == 'OPT' or modality == 'OP':
         output_metadata['acquisition']['files'] = [
             {"classification": dcm_metadata['classification'],
              "modality": dcm_metadata['modality'],
              "name": dicom_name}
         ]
-    output_metadata['acquisition']['files'][0]['name'] = dicom_name
     return output_metadata
 
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     elif modality == 'OPT' or modality == 'OP':
         dicom_metadata = OPHTHA_classifier.classify_OPHTHA(df, dicom_metadata, acquisition)
 
-    output_metadata = update_metadata(dicom_metadata, dicom_name)
+    output_metadata = update_metadata(dicom_metadata, dicom_name, modality)
     meta_log_string = pprint.pformat(output_metadata)
     log.info(meta_log_string)
     with open(metadata_output_filepath, 'w') as metafile:
