@@ -2,8 +2,9 @@ import re
 import common_utils
 from operator import add
 from functools import reduce
-import logging
+from collections import defaultdict
 import abc
+import logging
 
 from dotty_dict import Dotty
 
@@ -322,7 +323,7 @@ class Isotope(PTSubClassifier):
 
         # append to classifications if classified
         if isotope_f18:
-            classifications['Isotope'] = isotope_f18
+            classifications['Isotope'].append(isotope_f18)
 
         return classifications, info_object
 
@@ -360,7 +361,7 @@ class ProcessingPTSubClassifier(PTSubClassifier):
 
         # append to classifications if classified
         if processing_ac:
-            classifications['Processing'] = processing_ac
+            classifications['Processing'].append(processing_ac)
 
         return classifications, info_object
 
@@ -407,7 +408,7 @@ class TracerPTSubClassifier(PTSubClassifier):
 
         # append to classifications if classified
         if tracer_fdg:
-            classifications['Tracer'] = tracer_fdg
+            classifications['Tracer'].append(tracer_fdg)
 
         return classifications, info_object
 
@@ -430,6 +431,9 @@ class BaseModalityClassifier(abc.ABC):
             self.classifiers.append(subclass(self.single_header_object, self.acquisition))
 
     def classify(self, classification, info_object):
+
+        # make classification a defaultdict with default=list
+        classification = defaultdict(list, classification)
 
         for classifier in self.classifiers:
             classification, info_object = classifier.classify(classification, info_object)
