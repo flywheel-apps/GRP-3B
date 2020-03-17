@@ -1,10 +1,11 @@
 import re
-import string
 import common_utils
 from operator import add
 from functools import reduce
 import logging
 import abc
+
+from dotty_dict import Dotty
 
 from CT_classifier import is_lung_window
 
@@ -251,178 +252,104 @@ def get_anatomy_from_scan_coverage(scan_coverage):
     return new_anatomy
 
 
-class Classifier(abc.ABC):
+class PTSubClassifier(abc.ABC):
     """
     An abstract base class that's the component in the composite design
     pattern.
 
     All children will define the method 'classify', which returns
-    classifications and info_object parameters. Any new classification
-    method within children shall be added to the 'classify' method of each
-    child, and each classification method shall update parameter
-    'classification', 'info_object', or both.
-
-    The composite class 'Classifiers' will be used to perform all
-    classifications. To do so, all children of 'Classifer' (e.g.,
-    components) shall be added to Classifiers.classify() method.
+    classifications and info_object parameters.
     """
 
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
+    def __init__(self, single_header_object: dict, acquisition):
         """
-        single_header_object: this is just the GIP dicom header info similar
-            to file.info['header']['dicom'].
+        Args:
+            single_header_object (dict): This is just the GIP dicom header info similar to file.info['header']['dicom'].
+            acquisition (flywheel.Acquisition): A flywheel acquisition object
         """
         self.single_header_object = single_header_object
-        self.classifications = classifications
-        self.info_object = info_object
         self.acquisition = acquisition
         self.label = acquisition.label
 
     @abc.abstractmethod
-    def classify(self):
-        # Always return self.classifications, self.info_object
-        pass
+    def classify(self, classifications, info_object):
+        raise NotImplemented
 
-    def get_dicom_tag(self, dicom_tag_key: str):
-        """
-        Gets a dicom tag from a dicom header.
-
-        The header is a Flywheel dictionary object, so nested dicom
-        properties are simply nested dictionaries.
-
-        dicom_tag_key: str
-            The format of this should be "['tag']['tag_nested'][
-            'tag_nested_nested']"
-        """
-
-        try:
-            dicom_tag = eval("self.single_header_object" + dicom_tag_key)
-        except (AttributeError, IndexError, KeyError):
-            dicom_tag = None
-
-        # if it's an empty value (e.g., '' or []), then set as None
-        if not dicom_tag:
-            dicom_tag = None
-
-        return dicom_tag
-
-    def append_to_param(self, key, value, param):
-        """
-        Appends a new key value pair to either 'classifications' or
-        'info_object' parameter.
-        """
-        if param == 'classifications':
-            dict_out = self.classifications
-        elif param == 'info_object':
-            dict_out = self.info_object
-        else:
-            raise ValueError("param should be 'classifications' or "
-                             "'info_object', not {}".format(param))
-
-        if key in dict_out:
-            dict_out[key].append(value)
-        else:
-            value = [value]
-            dict_out[key] = value
-        exec("self." + param + " = dict_out")
+    def get_dicom_tag(self, dotty_key: str):
+        """Returns the value of single_header_object at dotty_key location"""
+        return self.single_header_object.get(dotty_key)
 
 
-class IsotopeClassifier(Classifier):
+class Isotope(PTSubClassifier):
 
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
-        super().__init__(single_header_object=single_header_object,
-                         classifications=classifications,
-                         info_object=info_object,
-                         acquisition=acquisition)
-        # get CodeValue of Isotope
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadionuclideCodeSequence'][0]['CodeValue']"
-        self.code_value = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-
-        # get CodeMeaning of Isotope. Convert to lowercase if str is found.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadionuclideCodeSequence'][0]['CodeMeaning']"
-        code_meaning = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-        if type(code_meaning) == str:
-            code_meaning = code_meaning.lower()
-        self.code_meaning = code_meaning
-
-        # get CodeMeaning of Tracer. Sometimes F18 info is in this.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadiopharmaceuticalCodeSequence'][0]['CodeMeaning']"
-        code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-        if type(code_meaning_tracer) == str:
-            code_meaning_tracer = code_meaning_tracer.lower()
-        self.code_meaning_tracer = code_meaning_tracer
-
-    def classify(self):
+    def classify(self, classifications, info_object):
         # Classify isotopes
-        self.classify_f18()
+        classifications, info_object = self.classify_f18(classifications, info_object)
 
-        return self.classifications, self.info_object
+        return classifications, info_object
 
-    def classify_f18(self):
+    def classify_f18(self, classifications, info_object):
         isotope_f18 = None
 
         # classify based on code value first
-        if self.code_value == 'C-111A1':
+        code_value = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.CodeValue')
+        if code_value == 'C-111A1':
             isotope_f18 = 'F18'
 
         # classify based on code meaning if none is found
+        # get CodeMeaning of Isotope. Convert to lowercase if str is found.
+        code_meaning = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.CodeMeaning')
+        if type(code_meaning) == str:
+            code_meaning = code_meaning.lower()
+
         if not isotope_f18:
-            if self.code_meaning:
-                code_meaning = self.code_meaning
+            if code_meaning:
                 if ('18' in code_meaning) and ('f' in code_meaning):
                     isotope_f18 = 'F18'
 
         # classify based on Tracer code meaning
+        # get CodeMeaning of Tracer. Sometimes F18 info is in this.
+        code_meaning_tracer = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeMeaning')
+        if type(code_meaning_tracer) == str:
+            code_meaning_tracer = code_meaning_tracer.lower()
         if not isotope_f18:
-            if self.code_meaning_tracer:
-                code_meaning = self.code_meaning_tracer
+            if code_meaning_tracer:
                 if 'f^18' in code_meaning:
                     isotope_f18 = 'F18'
 
         # append to classifications if classified
         if isotope_f18:
-            self.append_to_param(key='Isotope', value=isotope_f18,
-                                 param='classifications')
+            classifications['Isotope'] = isotope_f18
+
+        return classifications, info_object
 
 
-class ProcessingClassifier(Classifier):
+class ProcessingPTSubClassifier(PTSubClassifier):
 
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
-        super().__init__(single_header_object=single_header_object,
-                         classifications=classifications,
-                         info_object=info_object,
-                         acquisition=acquisition)
-        # get AttenuationCorrectionMethod
-        dicom_tag_key = "['AttenuationCorrectionMethod']"
-        self.ac_method = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
+    def classify(self, classifications, info_object):
+        classifications, info_object = self.classify_attenuation_corrected(classifications, info_object)
+        return classifications, info_object
 
-        # get CorrectedImage
-        dicom_tag_key = "['CorrectedImage']"
-        self.corrected_image = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-
-    def classify(self):
-        self.classify_attenuation_corrected()
-
-        return self.classifications, self.info_object
-
-    def classify_attenuation_corrected(self):
+    def classify_attenuation_corrected(self, classifications, info_object):
         processing_ac = None
 
         # classify based on dicom header 'AttenuationCorrectionMethod'
         # exists first
-        if self.ac_method:
+
+        # get AttenuationCorrectionMethod
+        ac_method = self.get_dicom_tag('AttenuationCorrectionMethod')
+        if ac_method:
             processing_ac = 'Attenuation Corrected'
 
         # classify based on 'CorrectedImage' if haven't classified
+        # get CorrectedImage
+        corrected_image = self.get_dicom_tag('CorrectedImage')
         if not processing_ac:
-            if self.corrected_image:
-                if 'ATTN' in self.corrected_image:
+            if corrected_image:
+                if 'ATTN' in corrected_image:
                     processing_ac = 'Attenuation Corrected'
 
         # classify based on acquisition label if haven't classified
@@ -433,187 +360,86 @@ class ProcessingClassifier(Classifier):
 
         # append to classifications if classified
         if processing_ac:
-            self.append_to_param(key='Processing', value=processing_ac,
-                                 param='classifications')
+            classifications['Processing'] = processing_ac
+
+        return classifications, info_object
 
 
-class TracerClassifier(Classifier):
+class TracerPTSubClassifier(PTSubClassifier):
 
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
-        super().__init__(single_header_object=single_header_object,
-                         classifications=classifications,
-                         info_object=info_object,
-                         acquisition=acquisition)
-
-        # get CodeValue of Tracer.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadiopharmaceuticalCodeSequence'][0]['CodeValue']"
-        self.code_value_tracer = self.get_dicom_tag(
-            dicom_tag_key=dicom_tag_key)
-
-        # get CodeMeaning of Tracer.
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadiopharmaceuticalCodeSequence'][0]['CodeMeaning']"
-        code_meaning_tracer = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-        if type(code_meaning_tracer) == str:
-            code_meaning_tracer = code_meaning_tracer.lower()
-        self.code_meaning_tracer = code_meaning_tracer
-
-        # get 'Radiopharmaceutical' from 'RadionuclideCodeSequence'
-        dicom_tag_key = "['RadiopharmaceuticalInformationSequence'][0]" \
-                        "['RadionuclideCodeSequence'][0][" \
-                        "'Radiopharmaceutical']"
-        radiopharma = self.get_dicom_tag(dicom_tag_key=dicom_tag_key)
-        if type(radiopharma) == str:
-            radiopharma = radiopharma.lower()
-        self.radiopharma = radiopharma
-
-    def classify(self):
+    def classify(self, classifications, info_object):
         self.classify_fdg()
 
-        return self.classifications, self.info_object
+        return classifications, info_object
 
-    def classify_fdg(self):
+    def classify_fdg(self, classifications, info_object):
         tracer_fdg = None
 
         # classify based on code value first
-        if (self.code_value_tracer == 'C-B1031') or \
-            (self.code_value_tracer == 'Y-X1743'):
+        # get CodeValue of Tracer.
+        code_value_tracer = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeValue')
+        if code_value_tracer == 'C-B1031' or code_value_tracer == 'Y-X1743':
             tracer_fdg = 'FDG'
 
         # classify based on code meaning if none is found
+        # get CodeMeaning of Tracer.
+        code_meaning_tracer = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeMeaning')
+        if type(code_meaning_tracer) == str:
+            code_meaning_tracer = code_meaning_tracer.lower()
+
         if not tracer_fdg:
-            if self.code_meaning_tracer:
-                code_meaning = self.code_meaning_tracer
-                if ('fluorodeoxyglucose' in code_meaning) or \
-                        ('fdg' in code_meaning):
+            if code_meaning_tracer:
+                if 'fluorodeoxyglucose' in code_meaning_tracer or 'fdg' in code_meaning_tracer:
                     tracer_fdg = 'FDG'
 
         # classify based on 'Radiopharmaceutical' if none is found
+        # get 'Radiopharmaceutical' from 'RadionuclideCodeSequence'
+        radiopharma = self.get_dicom_tag(
+            'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.Radiopharmaceutical')
+        if type(radiopharma) == str:
+            radiopharma = radiopharma.lower()
         if not tracer_fdg:
-            if self.radiopharma:
-                if ('fluorodeoxyglucose' in self.radiopharma) or \
-                        ('fdg' in self.radiopharma):
+            if radiopharma:
+                if 'fluorodeoxyglucose' in radiopharma or 'fdg' in radiopharma:
                     tracer_fdg = 'FDG'
 
         # append to classifications if classified
         if tracer_fdg:
-            self.append_to_param(key='Tracer', value=tracer_fdg,
-                                 param='classifications')
-
-
-class AnatomyClassifier(Classifier):
-    """
-    Classifies PET anatomy.
-
-    Since some classification for anatomy is already done externally,
-    this classifier accounts for this. At this time, this Classifier object
-    is not currently implemented in Classifiers, since current
-    classification requirements are already fulfilled.
-
-    Notes
-    -----
-    FUTURE - move all external anatomy classifications to this Classifier
-    object.
-    """
-
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
-        super().__init__(single_header_object=single_header_object,
-                         classifications=classifications,
-                         info_object=info_object,
-                         acquisition=acquisition)
-
-    def classify(self):
-
-        classifications_anatomy = self.classifications.get('Anatomy')
-
-        # classify what's not been classified if classifications_anatomy is
-        # not empty, else classify everything.
-        if classifications_anatomy is not None:
-            if 'Whole Body' not in classifications_anatomy:
-                self.classify_whole_body()
-
-            # check and call all remaining methods
-
-        else:
-            # call all of the classify methods
-            pass
-
-    def classify_abdomen(self):
-        pass
-
-    def classify_chest(self):
-        pass
-
-    def classify_head(self):
-        pass
-
-    def classify_lower_extremities(self):
-        pass
-
-    def classify_neck(self):
-        pass
-
-    def classify_pelvis(self):
-        pass
-
-    def classify_upper_extremities(self):
-        pass
-
-    def classify_whole_body(self):
-        pass
-
-
-class Classifiers(Classifier):
-    """
-    This is the composite class in the composite design pattern.
-
-    It's really a pseudo-composite class; children cannot be added externally.
-    Add new Classifier children to 'classify' method here.
-
-    Notes
-    -----
-    FUTURE - To make this a truly composite class, we can make a class
-    variable 'classifiers' and add the ability to add/remove external children
-    to this variable by creating these methods for Classifiers.
-    """
-
-    def __init__(self, single_header_object: dict, acquisition,
-                 classifications: dict = {}, info_object: dict = {}):
-        super().__init__(single_header_object=single_header_object,
-                         classifications=classifications,
-                         info_object=info_object,
-                         acquisition=acquisition)
-
-    def classify(self):
-        """
-        Instantiates all Classifier children and calls each child's
-        classify() method.
-
-        The parameters 'classifications' and 'info_object' are passed to the
-        next child that's instantiated. In this manner, one need only
-        instantiate a Classifiers object and call its classify() method to
-        perform all classifications.
-        """
-        classifiers = [IsotopeClassifier, ProcessingClassifier,
-                       TracerClassifier]
-
-        # assign
-        single_header_object = self.single_header_object
-        classifications = self.classifications
-        info_object = self.info_object
-        acquisition = self.acquisition
-        for classifier in classifiers:
-            my_classifier = classifier(
-                single_header_object=single_header_object,
-                acquisition=acquisition,
-                classifications=classifications,
-                info_object=info_object)
-            classifications, info_object = my_classifier.classify()
+            classifications['Tracer'] = tracer_fdg
 
         return classifications, info_object
+
+
+class BaseModalityClassifier(abc.ABC):
+    """Modality Classifier abstract class
+
+    Attributes:
+        sub_classifier_class (Class): The SubClassifier class to use to build the list of classifiers that will be
+            applied.
+    """
+
+    sub_classifier_class = None
+
+    def __init__(self, single_header_object, acquisition):
+        self.single_header_object = single_header_object
+        self.acquisition = acquisition
+        self.classifiers = []
+        for subclass in self.sub_classifier_class.__subclasses__():
+            self.classifiers.append(subclass(self.single_header_object, self.acquisition))
+
+    def classify(self, classification, info_object):
+
+        for classifier in self.classifiers:
+            classification, info_object = classifier.classify(classification, info_object)
+
+        return classification, info_object
+
+
+class PTClassifier(BaseModalityClassifier):
+    sub_classifier_class = PTSubClassifier
+
 
 ######################################################################################
 ######################################################################################
@@ -650,12 +476,8 @@ def classify_PT(df, dcm_metadata, acquisition):
             classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
 
         # Classify Isotope, Processing, Tracer
-        my_classifiers = Classifiers(
-            single_header_object=single_header_object,
-            acquisition=acquisition,
-            classifications=classifications,
-            info_object=info_object)
-        classifications, info_object = my_classifiers.classify()
+        pt_classifier = PTClassifier(single_header_object=single_header_object, acquisition=acquisition)
+        classifications, info_object = pt_classifier.classify(classifications, info_object)
 
         dcm_metadata['info'].update(info_object)
 
