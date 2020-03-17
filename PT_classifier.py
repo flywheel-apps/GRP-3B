@@ -368,7 +368,7 @@ class ProcessingPTSubClassifier(PTSubClassifier):
 class TracerPTSubClassifier(PTSubClassifier):
 
     def classify(self, classifications, info_object):
-        self.classify_fdg()
+        classifications, info_object = self.classify_fdg(classifications, info_object)
 
         return classifications, info_object
 
