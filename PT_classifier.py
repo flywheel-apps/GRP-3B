@@ -262,34 +262,63 @@ class PTSubClassifier(abc.ABC):
     classifications and info_object parameters.
     """
 
-    def __init__(self, single_header_object: dict, acquisition):
+    def __init__(self, header_dicom: dict, acquisition):
         """
         Args:
-            single_header_object (dict): This is just the GIP dicom header info similar to file.info['header']['dicom'].
-            acquisition (flywheel.Acquisition): A flywheel acquisition object
+            header_dicom (dict): This is just the dicom header info similar to file.info['header']['dicom'].
+            acquisition (flywheel.Acquisition): A flywheel acquisition container object
         """
-        self.single_header_object = single_header_object
+        self.header_dicom = header_dicom
         self.acquisition = acquisition
         self.label = acquisition.label
 
     @abc.abstractmethod
     def classify(self, classifications, info_object):
+        """Returns updated classifications and info_object
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         raise NotImplemented
 
     def get_dicom_tag(self, dotty_key: str):
-        """Returns the value of single_header_object at dotty_key location"""
-        return self.single_header_object.get(dotty_key)
+        """Returns the value of single_header_object at dotty_key location.
+
+        Args:
+            dotty_key (str): A string to reference the location of the targeted value
+                (e.g. 'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.CodeValue')
+        """
+        return self.header_dicom.get(dotty_key)
 
 
 class Isotope(PTSubClassifier):
 
     def classify(self, classifications, info_object):
+        """Returns updated classifications and info_object
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         # Classify isotopes
         classifications, info_object = self.classify_f18(classifications, info_object)
 
         return classifications, info_object
 
     def classify_f18(self, classifications, info_object):
+        """Returns updated classifications and info_object with Isotope
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         isotope_f18 = None
 
         # classify based on code value first
@@ -331,10 +360,26 @@ class Isotope(PTSubClassifier):
 class ProcessingPTSubClassifier(PTSubClassifier):
 
     def classify(self, classifications, info_object):
+        """Returns updated classifications and info_object
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         classifications, info_object = self.classify_attenuation_corrected(classifications, info_object)
         return classifications, info_object
 
     def classify_attenuation_corrected(self, classifications, info_object):
+        """Returns updated classifications and info_object with Processing info
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         processing_ac = None
 
         # classify based on dicom header 'AttenuationCorrectionMethod'
@@ -369,11 +414,27 @@ class ProcessingPTSubClassifier(PTSubClassifier):
 class TracerPTSubClassifier(PTSubClassifier):
 
     def classify(self, classifications, info_object):
+        """Returns updated classifications and info_object.
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         classifications, info_object = self.classify_fdg(classifications, info_object)
 
         return classifications, info_object
 
     def classify_fdg(self, classifications, info_object):
+        """Returns updated classifications and info_object with Tracer info.
+
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         tracer_fdg = None
 
         # classify based on code value first
@@ -416,22 +477,33 @@ class TracerPTSubClassifier(PTSubClassifier):
 class BaseModalityClassifier(abc.ABC):
     """Modality Classifier abstract class
 
+    Args:
+        dicom_header (dict): This is just the dicom header info similar to file.info['header']['dicom'].
+        acquisition (flywheel.Acquisition): A flywheel acquisition container object
+
     Attributes:
-        sub_classifier_class (Class): The SubClassifier class to use to build the list of classifiers that will be
+        sub_classifier_class (Class): The SubClassifier class to use to build the list of sub classifiers that will be
             applied.
     """
 
     sub_classifier_class = None
 
-    def __init__(self, single_header_object, acquisition):
-        self.single_header_object = single_header_object
+    def __init__(self, header_dicom, acquisition):
+        self.header_dicom = header_dicom
         self.acquisition = acquisition
         self.classifiers = []
         for subclass in self.sub_classifier_class.__subclasses__():
-            self.classifiers.append(subclass(self.single_header_object, self.acquisition))
+            self.classifiers.append(subclass(self.header_dicom, self.acquisition))
 
     def classify(self, classification, info_object):
+        """Returns updated classification and info_object
 
+        Args:
+            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
+                for a PT modality for instance.
+            info_object (dict): Info dictionary attribute of a file object.
+        """
         # make classification a defaultdict with default=list
         classification = defaultdict(list, classification)
 
@@ -442,6 +514,7 @@ class BaseModalityClassifier(abc.ABC):
 
 
 class PTClassifier(BaseModalityClassifier):
+    """The PT Classifier class"""
     sub_classifier_class = PTSubClassifier
 
 
@@ -458,8 +531,8 @@ def classify_PT(df, dcm_metadata, acquisition):
         dict: The dictionary for the PT classification
     '''
     log.info("Determining PT Classification...")
-    single_header_object = dcm_metadata['info']['header']['dicom']
-    series_description = single_header_object.get('SeriesDescription') or ''
+    header_dicom = dcm_metadata['info']['header']['dicom']
+    series_description = header_dicom.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
 
@@ -467,7 +540,7 @@ def classify_PT(df, dcm_metadata, acquisition):
         classifications['Scan Type'] = ['Localizer']
     else:
         scan_coverage = None
-        if single_header_object['ImageType'][0] == 'ORIGINAL':
+        if header_dicom['ImageType'][0] == 'ORIGINAL':
             scan_coverage = common_utils.compute_scan_coverage(df)
         if scan_coverage:
             info_object['ScanCoverage'] = scan_coverage
@@ -480,7 +553,7 @@ def classify_PT(df, dcm_metadata, acquisition):
             classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
 
         # Classify Isotope, Processing, Tracer
-        pt_classifier = PTClassifier(single_header_object=single_header_object, acquisition=acquisition)
+        pt_classifier = PTClassifier(header_dicom=header_dicom, acquisition=acquisition)
         classifications, info_object = pt_classifier.classify(classifications, info_object)
 
         dcm_metadata['info'].update(info_object)
