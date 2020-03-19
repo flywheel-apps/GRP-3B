@@ -18,7 +18,6 @@ def format_string(in_string):
     return formatted#.encode('utf-8').strip()
 
 
-
 def assign_type(s):
     '''
     Sets the type of a given input.
@@ -113,7 +112,6 @@ def get_pydicom_header(dcm):
             log.debug('Failed to get ' + tag)
             pass
     return header
-
 
 
 def process_dicom(zip_file_path):
