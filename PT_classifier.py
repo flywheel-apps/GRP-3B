@@ -268,7 +268,7 @@ class PTSubClassifier(abc.ABC):
             header_dicom (dict): This is just the dicom header info similar to file.info['header']['dicom'].
             acquisition (flywheel.Acquisition): A flywheel acquisition container object
         """
-        self.header_dicom = header_dicom
+        self.header_dicom = Dotty(header_dicom)
         self.acquisition = acquisition
         self.label = acquisition.label
 
