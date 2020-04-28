@@ -268,7 +268,7 @@ class PTSubClassifier(abc.ABC):
             header_dicom (dict): This is just the dicom header info similar to file.info['header']['dicom'].
             acquisition (flywheel.Acquisition): A flywheel acquisition container object
         """
-        self.header_dicom = header_dicom
+        self.header_dicom = Dotty(header_dicom)
         self.acquisition = acquisition
         self.label = acquisition.label
 
@@ -536,27 +536,24 @@ def classify_PT(df, dcm_metadata, acquisition):
     classifications = {}
     info_object = {}
 
-    if common_utils.is_localizer(acquisition.label) or common_utils.is_localizer(series_description) or len(df) < 10:
-        classifications['Scan Type'] = ['Localizer']
-    else:
-        scan_coverage = None
-        if header_dicom['ImageType'][0] == 'ORIGINAL':
-            scan_coverage = common_utils.compute_scan_coverage(df)
-        if scan_coverage:
-            info_object['ScanCoverage'] = scan_coverage
+    scan_coverage = None
+    if header_dicom['ImageType'][0] == 'ORIGINAL':
+        scan_coverage = common_utils.compute_scan_coverage(df)
+    if scan_coverage:
+        info_object['ScanCoverage'] = scan_coverage
 
-        # # Anatomy
-        classifications['Anatomy'] = get_anatomy_from_label(acquisition.label)
-        if not classifications['Anatomy']:
-            classifications['Anatomy'] = get_anatomy_from_label(series_description)
-        if not classifications['Anatomy']:
-            classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
+    # # Anatomy
+    classifications['Anatomy'] = get_anatomy_from_label(acquisition.label)
+    if not classifications['Anatomy']:
+        classifications['Anatomy'] = get_anatomy_from_label(series_description)
+    if not classifications['Anatomy']:
+        classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
 
-        # Classify Isotope, Processing, Tracer
-        pt_classifier = PTClassifier(header_dicom=header_dicom, acquisition=acquisition)
-        classifications, info_object = pt_classifier.classify(classifications, info_object)
+    # Classify Isotope, Processing, Tracer
+    pt_classifier = PTClassifier(header_dicom=header_dicom, acquisition=acquisition)
+    classifications, info_object = pt_classifier.classify(classifications, info_object)
 
-        dcm_metadata['info'].update(info_object)
+    dcm_metadata['info'].update(info_object)
 
     dcm_metadata['classification'] = classifications
 
