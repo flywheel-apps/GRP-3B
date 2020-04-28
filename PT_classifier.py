@@ -355,7 +355,7 @@ class IsotopePTSubClassifier(PTSubClassifier):
 
         return classifications, info_object
 
-    def classify_based_on_isotope_code(self, classifications, info_object):
+    def classify_based_on_isotope_code(self, classification, info_object):
         """Returns updated classifications and info_object with Isotope Code info."""
         isotope = None
         code_value_isotope = self.get_dicom_tag(
@@ -364,10 +364,15 @@ class IsotopePTSubClassifier(PTSubClassifier):
         if code_value_isotope in ISOTOPE_CODES:
             isotope = ISOTOPE_CODES[code_value_isotope]
 
-        if isotope and not classifications['Isotope']:
-            classifications['Isotope'].append(isotope)
+        if classification['Isotope']:
+            if isotope not in classification['Isotope']:
+                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
+                            f'({classification["Isotope"]})')
 
-        return classifications, info_object
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
+
+        return classification, info_object
 
     def classify_based_on_isotope_meaning(self, classification, info_object):
         """Returns updated classifications and info_object with Isotope Meaning info."""
@@ -381,6 +386,11 @@ class IsotopePTSubClassifier(PTSubClassifier):
         if code_meaning_isotope and code_meaning_isotope.lower() in lc_kw:
             isotope = lc_kw[code_meaning_isotope.lower()]
 
+        if classification['Isotope']:
+            if isotope not in classification['Isotope']:
+                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
+                            f'({classification["Isotope"]})')
+
         if isotope and not classification['Isotope']:
             classification['Isotope'].append(isotope)
 
@@ -390,7 +400,7 @@ class IsotopePTSubClassifier(PTSubClassifier):
 class ProcessingPTSubClassifier(PTSubClassifier):
 
     def classify(self, classification, info_object):
-        """Returns updated classifications and info_object
+        """Returns updated classification and info_object
 
         Args:
             classification (dict): A dictionary matching flywheel modality specific classification. Note the
@@ -402,7 +412,7 @@ class ProcessingPTSubClassifier(PTSubClassifier):
         return classification, info_object
 
     def classify_attenuation_corrected(self, classification, info_object):
-        """Returns updated classifications and info_object with Processing info"""
+        """Returns updated classification and info_object with Processing info"""
         processing_ac = None
 
         ac_method = self.get_dicom_tag('AttenuationCorrectionMethod')
@@ -423,7 +433,7 @@ class ProcessingPTSubClassifier(PTSubClassifier):
                 if "AC" in self.label:
                     processing_ac = 'Attenuation Corrected'
 
-        # append to classifications if classified
+        # append to classification if classified
         if processing_ac:
             classification['Processing'].append(processing_ac)
 
@@ -433,7 +443,7 @@ class ProcessingPTSubClassifier(PTSubClassifier):
 class TracerPTSubClassifier(PTSubClassifier):
 
     def classify(self, classification, info_object):
-        """Returns updated classifications and info_object.
+        """Returns updated classification and info_object.
 
         Args:
             classification (dict): A dictionary matching flywheel modality specific classification. Note the
@@ -447,8 +457,8 @@ class TracerPTSubClassifier(PTSubClassifier):
 
         return classification, info_object
 
-    def classify_based_on_tracer_code(self, classifications, info_object):
-        """Returns updated classifications and info_object with Tracer code info."""
+    def classify_based_on_tracer_code(self, classification, info_object):
+        """Returns updated classification and info_object with Tracer code info."""
         tracer, isotope = None, None
         code_value_tracer = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeValue')
@@ -457,15 +467,15 @@ class TracerPTSubClassifier(PTSubClassifier):
             tracer = TRACER_CODES[code_value_tracer]
             isotope = TRACER_TO_ISOTOPE[tracer]
 
-        if tracer and not classifications['Tracer']:
-            classifications['Tracer'].append(tracer)
-        if isotope and not classifications['Isotope']:
-            classifications['Isotope'].append(isotope)
+        if tracer and not classification['Tracer']:
+            classification['Tracer'].append(tracer)
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
 
-        return classifications, info_object
+        return classification, info_object
 
     def classify_based_on_tracer_meaning_or_radiopharmaceutical(self, classification, info_object):
-        """Returns updated classifications and info_object with Tracer Code Meaning info."""
+        """Returns updated classification and info_object with Tracer Code Meaning info."""
         tracer, isotope = None, None
         lc_kw = {k.lower(): v for k, v in TRACER_MEANINGS.items()}
 
@@ -558,7 +568,7 @@ def classify_PT(df, dcm_metadata, acquisition):
     log.info("Determining PT Classification...")
     header_dicom = dcm_metadata['info']['header']['dicom']
     series_description = header_dicom.get('SeriesDescription') or ''
-    classifications = {}
+    classification = {}
     info_object = {}
 
     scan_coverage = None
@@ -568,18 +578,18 @@ def classify_PT(df, dcm_metadata, acquisition):
         info_object['ScanCoverage'] = scan_coverage
 
     # # Anatomy
-    classifications['Anatomy'] = get_anatomy_from_label(acquisition.label)
-    if not classifications['Anatomy']:
-        classifications['Anatomy'] = get_anatomy_from_label(series_description)
-    if not classifications['Anatomy']:
-        classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
+    classification['Anatomy'] = get_anatomy_from_label(acquisition.label)
+    if not classification['Anatomy']:
+        classification['Anatomy'] = get_anatomy_from_label(series_description)
+    if not classification['Anatomy']:
+        classification['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
 
     # Classify Isotope, Processing, Tracer
     pt_classifier = PTClassifier(header_dicom=header_dicom, acquisition=acquisition)
-    classifications, info_object = pt_classifier.classify(classifications, info_object)
+    classification, info_object = pt_classifier.classify(classification, info_object)
 
     dcm_metadata['info'].update(info_object)
 
-    dcm_metadata['classification'] = classifications
+    dcm_metadata['classification'] = classification
 
     return dcm_metadata
