@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 # Scan Coverage
 def compute_scan_coverage(df):
-    df['ImagePositionPatient-Z'] = df.apply(lambda x: ast.literal_eval(x['ImagePositionPatient'])[2], axis=1)
+    df['ImagePositionPatient-Z'] = df.apply(lambda x: x['ImagePositionPatient'][2], axis=1)
     max = df['ImagePositionPatient-Z'].max()
     min = df['ImagePositionPatient-Z'].min()
     result = max - min
