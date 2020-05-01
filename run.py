@@ -79,7 +79,7 @@ if __name__ == '__main__':
     elif modality == 'PT':
         dicom_metadata = PT_classifier.classify_PT(df, dicom_metadata, acquisition)
     elif modality == 'OPT' or modality == 'OP':
-        dicom_metadata = OPHTHA_classifier.classify_OPHTHA(df, dicom_metadata, acquisition)
+        dicom_metadata = OPHTHA_classifier.classify_OPHTHA(dicom_metadata, acquisition)
 
     output_metadata = update_metadata(dicom_metadata, dicom_name, modality)
     meta_log_string = pprint.pformat(output_metadata)

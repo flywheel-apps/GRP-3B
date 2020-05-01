@@ -1,4 +1,4 @@
 dotty-dict~=1.2.1
-flywheel-sdk~=10.7.4
+flywheel-sdk~=11.2.6
 pydicom~=1.4.2
 pandas~=1.0.1
