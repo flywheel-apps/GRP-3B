@@ -256,9 +256,9 @@ def get_scan_type_classification(label, single_header_object):
     new_scan_type = []
     
     ## Scan Type
-    if single_header_object['ImageType'][0] == 'ORIGINAL':
+    if single_header_object.get('ImageType', [None])[0] == 'ORIGINAL':
         new_scan_type = ['Original']
-    elif single_header_object['ImageType'][0] == 'DERIVED':
+    elif single_header_object.get('ImageType', [None])[0] == 'DERIVED':
         new_scan_type = ['Derived']
     elif is_standard_scan(label):
         new_scan_type = ['Standard']

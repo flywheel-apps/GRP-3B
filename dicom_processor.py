@@ -1,11 +1,15 @@
+import logging
 import os
 import re
 import string
-import pydicom
+import sys
+import tempfile
 import zipfile
-import pandas as pd
-import logging
+from pathlib import Path
 
+import pandas as pd
+import pydicom
+from pydicom.datadict import DicomDictionary, tag_for_keyword
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +20,6 @@ def format_string(in_string):
     if len(formatted) == 1 and formatted == '?':
         formatted = None
     return formatted#.encode('utf-8').strip()
-
 
 
 def assign_type(s):
@@ -75,6 +78,25 @@ def get_seq_data(sequence, ignore_keys):
     return res
 
 
+def fix_type_based_on_dicom_vm(header):
+    exc_keys = []
+    for key, val in header.items():
+        try:
+            vr, vm, _, _, _ = DicomDictionary.get(tag_for_keyword(key))
+        except (ValueError, TypeError):
+            exc_keys.append(key)
+            continue
+
+        if vr != 'SQ':
+            if vm != '1' and not isinstance(val, list):  # anything else is a list
+                header[key] = [val]
+        else:
+            for dataset in val:
+                fix_type_based_on_dicom_vm(dataset)
+    if len(exc_keys) > 0:
+        log.warning('%s Dicom data elements were not type fixed based on VM', len(exc_keys))
+
+
 def get_pydicom_header(dcm):
     '''
     Extract the header values
@@ -112,56 +134,96 @@ def get_pydicom_header(dcm):
         except:
             log.debug('Failed to get ' + tag)
             pass
+
+    fix_type_based_on_dicom_vm(header)
+
     return header
 
 
+def get_dcm_data_dict(dcm_path, force=False):
+    file_size = os.path.getsize(dcm_path)
+    res = {
+        'path': dcm_path,
+        'size': file_size,
+        'force': force,
+        'pydicom_exception': False,
+        'header': None
+    }
+    if file_size > 0:
+        try:
+            dcm = pydicom.dcmread(dcm_path, force=force, stop_before_pixels=True)
+            res['header'] = get_pydicom_header(dcm)
+        except Exception:
+            log.exception('Pydicom raised exception reading dicom file %s', os.path.basename(dcm_path))
+            res['pydicom_exception'] = True
+    return res
 
-def process_dicom(zip_file_path):
+
+def process_dicom(file_path, force=True):
     '''
     Create Pandas Dataframe where each row is a dicom image header information
     '''
-    if zipfile.is_zipfile(zip_file_path):
-        dcm_list = []
-        zip_obj = zipfile.ZipFile(zip_file_path)
-        num_files = len(zip_obj.namelist())
-        for n in range((num_files - 1), -1, -1):
-            dcm_path = zip_obj.extract(zip_obj.namelist()[n], '/tmp')
-            dcm_tmp = None
-            if os.path.isfile(dcm_path):
-                try:
-                    log.debug('reading %s' % dcm_path)
-                    dcm_tmp = pydicom.read_file(dcm_path)
-                    # Here we check for the Raw Data Storage SOP Class, if there
-                    # are other pydicom files in the zip then we read the next one,
-                    # if this is the only class of pydicom in the file, we accept
-                    # our fate and move on.
-                    if dcm_tmp.get('SOPClassUID') == 'Raw Data Storage' and n != range((num_files - 1), -1, -1)[-1]:
-                        continue
-                    else:
-                        dcm_list.append(dcm_tmp)
-                except:
-                    pass
-            else:
-                log.warning('%s does not exist!' % dcm_path)
-        # Select last image
-        dcm = dcm_list[-1]
+    # Build list of dcm files
+    if zipfile.is_zipfile(file_path):
+        try:
+            log.info('Extracting %s ' % os.path.basename(file_path))
+            zip = zipfile.ZipFile(file_path)
+            tmp_dir = tempfile.TemporaryDirectory().name
+            zip.extractall(path=tmp_dir)
+            dcm_path_list = Path(tmp_dir).rglob('*')
+            # keep only files
+            dcm_path_list = [str(path) for path in dcm_path_list if os.path.isfile(path)]
+        except Exception:
+            log.warning('Zip file %s is corrupted. Logging to error.json and Exiting.', file_path)
+            sys.exit(1)
     else:
-        log.info('Not a zip. Attempting to read %s directly' % os.path.basename(zip_file_path))
-        dcm = pydicom.read_file(zip_file_path)
-        dcm_list = [dcm]
+        log.info('Not a zip. Attempting to read %s directly' % os.path.basename(file_path))
+        dcm_path_list = [file_path]
+
+    # Get list of Dicom data dict (with keys path, size, header)
+    dcm_dict_list = []
+    for dcm_path in dcm_path_list:
+        dcm_dict_list.append(get_dcm_data_dict(dcm_path, force=force))
+
+    # Load a representative dcm file
+    # Currently: not 0-byte file and SOPClassUID not Raw Data Storage unless that the only file
+    dcm = None
+    log.info('Selecting a valid Dicom file for parsing')
+    for idx, dcm_dict_el in enumerate(dcm_dict_list):
+        if dcm_dict_el['size'] > 0 and dcm_dict_el['header'] and not dcm_dict_el['pydicom_exception']:
+            # Here we check for the Raw Data Storage SOP Class, if there
+            # are other pydicom files in the zip then we read the next one,
+            # if this is the only class of pydicom in the file, we accept
+            # our fate and move on.
+            if dcm_dict_el['header'].get('SOPClassUID') == 'Raw Data Storage' and idx < len(dcm_dict_list) - 1:
+                log.warning('SOPClassUID=Raw Data Storage for %s. Skipping', dcm_dict_el['path'])
+                continue
+            else:
+                # Note: no need to try/except, all files have already been open when calling get_dcm_data_dict
+                dcm_path = dcm_dict_el['path']
+                dcm = pydicom.dcmread(dcm_path, force=force)
+                break
+        elif dcm_dict_el['size'] < 1:
+            log.warning('%s is empty. Skipping.', os.path.basename(dcm_dict_el['path']))
+        elif dcm_dict_el['pydicom_exception']:
+            log.warning('Pydicom raised on reading %s. Skipping.', os.path.basename(dcm_dict_el['path']))
+    if not dcm:
+        log.warning('No Dicom file found to be parsed!!!')
+        sys.exit(1)
+    else:
+        log.info('%s will be used for metadata extraction', os.path.basename(dcm_path))
 
     # Create pandas object for comparing headers
-    df_list = []
-    for header in dcm_list:
-        tmp_dict = get_pydicom_header(header)
-        for key in tmp_dict:
-            if type(tmp_dict[key]) == list:
-                tmp_dict[key] = str(tmp_dict[key])
-            else:
-                tmp_dict[key] = [tmp_dict[key]]
-        df_tmp = pd.DataFrame.from_dict(tmp_dict)
-        df_list.append(df_tmp)
-    df = pd.concat(df_list, ignore_index=True, sort=True)
+    data = []
+    for el in dcm_dict_list:
+        data.append({
+            'path': el['path'],
+            'SliceLocation': el['header'].get('SliceLocation'),
+            'ImageType': el['header'].get('ImageType'),
+            'ImageOrientationPatient': el['header'].get('ImageOrientationPatient'),
+            'ImagePositionPatient': el['header'].get('ImagePositionPatient'),
+        })
+    df = pd.DataFrame(data)
 
     return df, dcm
 
