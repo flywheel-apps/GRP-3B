@@ -14,6 +14,50 @@ log = logging.getLogger(__name__)
 
 SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
 
+# http://dicom.nema.org/medical/dicom/2015c/output/chtml/part16/sect_CID_4021.html
+TRACER_CODES = {
+    'C-B1031': 'FDG',  #Fluorodeoxyglucose
+    '126501': 'FBB',  #Florbetaben
+    'C-E0269': 'FBP',  #Florbetapir = AV45
+    'C-E0267': 'FMM',  #Flutemetamol
+    'C1831937': 'FES',  #Fluoroestradiol
+    '126500': 'PiB'   #Pittsburgh compound B
+}
+
+TRACER_MEANINGS = {
+    # first the allowed values of CodeMeaning for tracer, i.e., (0008,0104)
+    'Fluorodeoxyglucose F^18^': 'FDG',
+    'Florbetaben F^18^': 'FBB',
+    'Florbetapir F^18^': 'FBP',
+    'Flutemetamol F^18^': 'FMM',
+    'Fluoroestradiol (FES) F^18^': 'FES',
+    'Pittsburgh compound B C^11^': 'PiB',
+    # then values found for Radiopharmaceutical
+    #not sure if this can work, Radiopharmaceutical may be free-form text ?
+    'FDG -- fluorodeoxyglucose': 'FDG'
+}
+
+TRACER_TO_ISOTOPE = { # For some tracers, the tracer dictates the isotope
+    'FDG': 'F18',
+    'FBB': 'F18',
+    'FBP': 'F18',
+    'FMM': 'F18',
+    'FES': 'F18',
+    'PiB': 'C11'
+}
+
+#http://dicom.nema.org/medical/dicom/2015c/output/chtml/part16/sect_CID_4020.html
+ISOTOPE_CODES = {
+    'C-111A1': 'F18',
+    'C-105A1': 'C11',
+    'C-168A4': 'Zr89'
+}
+ISOTOPE_MEANINGS = {
+    '^18^Fluorine': 'F18'
+}
+
+
+
 ######################################################################################
 ######################################################################################
 
@@ -294,7 +338,7 @@ class PTSubClassifier(abc.ABC):
         return self.header_dicom.get(dotty_key)
 
 
-class Isotope(PTSubClassifier):
+class IsotopePTSubClassifier(PTSubClassifier):
 
     def classify(self, classifications, info_object):
         """Returns updated classifications and info_object
@@ -306,86 +350,71 @@ class Isotope(PTSubClassifier):
             info_object (dict): Info dictionary attribute of a file object.
         """
         # Classify isotopes
-        classifications, info_object = self.classify_f18(classifications, info_object)
+        classifications, info_object = self.classify_based_on_isotope_code(classifications, info_object)
+        classifications, info_object = self.classify_based_on_isotope_meaning(classifications, info_object)
 
         return classifications, info_object
 
-    def classify_f18(self, classifications, info_object):
-        """Returns updated classifications and info_object with Isotope
-
-        Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
-                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
-                for a PT modality for instance.
-            info_object (dict): Info dictionary attribute of a file object.
-        """
-        isotope_f18 = None
-
-        # classify based on code value first
-        code_value = self.get_dicom_tag(
+    def classify_based_on_isotope_code(self, classification, info_object):
+        """Returns updated classifications and info_object with Isotope Code info."""
+        isotope = None
+        code_value_isotope = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.CodeValue')
-        if code_value == 'C-111A1':
-            isotope_f18 = 'F18'
 
-        # classify based on code meaning if none is found
-        # get CodeMeaning of Isotope. Convert to lowercase if str is found.
-        code_meaning = self.get_dicom_tag(
+        if code_value_isotope in ISOTOPE_CODES:
+            isotope = ISOTOPE_CODES[code_value_isotope]
+
+        if classification['Isotope']:
+            if isotope not in classification['Isotope']:
+                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
+                            f'({classification["Isotope"]})')
+
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
+
+        return classification, info_object
+
+    def classify_based_on_isotope_meaning(self, classification, info_object):
+        """Returns updated classifications and info_object with Isotope Meaning info."""
+        isotope = None
+
+        lc_kw = {k.lower(): v for k, v in ISOTOPE_MEANINGS.items()}
+
+        code_meaning_isotope = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.CodeMeaning')
-        if type(code_meaning) == str:
-            code_meaning = code_meaning.lower()
 
-        if not isotope_f18:
-            if code_meaning:
-                if ('18' in code_meaning) and ('f' in code_meaning):
-                    isotope_f18 = 'F18'
+        if code_meaning_isotope and code_meaning_isotope.lower() in lc_kw:
+            isotope = lc_kw[code_meaning_isotope.lower()]
 
-        # classify based on Tracer code meaning
-        # get CodeMeaning of Tracer. Sometimes F18 info is in this.
-        code_meaning_tracer = self.get_dicom_tag(
-            'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeMeaning')
-        if type(code_meaning_tracer) == str:
-            code_meaning_tracer = code_meaning_tracer.lower()
-        if not isotope_f18:
-            if code_meaning_tracer:
-                if 'f^18' in code_meaning:
-                    isotope_f18 = 'F18'
+        if classification['Isotope']:
+            if isotope not in classification['Isotope']:
+                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
+                            f'({classification["Isotope"]})')
 
-        # append to classifications if classified
-        if isotope_f18:
-            classifications['Isotope'].append(isotope_f18)
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
 
-        return classifications, info_object
+        return classification, info_object
 
 
 class ProcessingPTSubClassifier(PTSubClassifier):
 
-    def classify(self, classifications, info_object):
-        """Returns updated classifications and info_object
+    def classify(self, classification, info_object):
+        """Returns updated classification and info_object
 
         Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+            classification (dict): A dictionary matching flywheel modality specific classification. Note the
                 classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
                 for a PT modality for instance.
             info_object (dict): Info dictionary attribute of a file object.
         """
-        classifications, info_object = self.classify_attenuation_corrected(classifications, info_object)
-        return classifications, info_object
+        classification, info_object = self.classify_attenuation_corrected(classification, info_object)
+        return classification, info_object
 
-    def classify_attenuation_corrected(self, classifications, info_object):
-        """Returns updated classifications and info_object with Processing info
-
-        Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
-                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
-                for a PT modality for instance.
-            info_object (dict): Info dictionary attribute of a file object.
-        """
+    def classify_attenuation_corrected(self, classification, info_object):
+        """Returns updated classification and info_object with Processing info"""
         processing_ac = None
 
-        # classify based on dicom header 'AttenuationCorrectionMethod'
-        # exists first
-
-        # get AttenuationCorrectionMethod
         ac_method = self.get_dicom_tag('AttenuationCorrectionMethod')
         if ac_method:
             processing_ac = 'Attenuation Corrected'
@@ -404,102 +433,104 @@ class ProcessingPTSubClassifier(PTSubClassifier):
                 if "AC" in self.label:
                     processing_ac = 'Attenuation Corrected'
 
-        # append to classifications if classified
+        # append to classification if classified
         if processing_ac:
-            classifications['Processing'].append(processing_ac)
+            classification['Processing'].append(processing_ac)
 
-        return classifications, info_object
+        return classification, info_object
 
 
 class TracerPTSubClassifier(PTSubClassifier):
 
-    def classify(self, classifications, info_object):
-        """Returns updated classifications and info_object.
+    def classify(self, classification, info_object):
+        """Returns updated classification and info_object.
 
         Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+            classification (dict): A dictionary matching flywheel modality specific classification. Note the
                 classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
                 for a PT modality for instance.
             info_object (dict): Info dictionary attribute of a file object.
         """
-        classifications, info_object = self.classify_fdg(classifications, info_object)
+        classification, info_object = self.classify_based_on_tracer_code(classification, info_object)
+        classification, info_object = \
+            self.classify_based_on_tracer_meaning_or_radiopharmaceutical(classification, info_object)
 
-        return classifications, info_object
+        return classification, info_object
 
-    def classify_fdg(self, classifications, info_object):
-        """Returns updated classifications and info_object with Tracer info.
-
-        Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
-                classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
-                for a PT modality for instance.
-            info_object (dict): Info dictionary attribute of a file object.
-        """
-        tracer_fdg = None
-
-        # classify based on code value first
-        # get CodeValue of Tracer.
+    def classify_based_on_tracer_code(self, classification, info_object):
+        """Returns updated classification and info_object with Tracer code info."""
+        tracer, isotope = None, None
         code_value_tracer = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeValue')
-        if code_value_tracer == 'C-B1031' or code_value_tracer == 'Y-X1743':
-            tracer_fdg = 'FDG'
 
-        # classify based on code meaning if none is found
-        # get CodeMeaning of Tracer.
+        if code_value_tracer in TRACER_CODES:
+            tracer = TRACER_CODES[code_value_tracer]
+            isotope = TRACER_TO_ISOTOPE[tracer]
+
+        if tracer and not classification['Tracer']:
+            classification['Tracer'].append(tracer)
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
+
+        return classification, info_object
+
+    def classify_based_on_tracer_meaning_or_radiopharmaceutical(self, classification, info_object):
+        """Returns updated classification and info_object with Tracer Code Meaning info."""
+        tracer, isotope = None, None
+        lc_kw = {k.lower(): v for k, v in TRACER_MEANINGS.items()}
+
         code_meaning_tracer = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadiopharmaceuticalCodeSequence.0.CodeMeaning')
-        if type(code_meaning_tracer) == str:
-            code_meaning_tracer = code_meaning_tracer.lower()
 
-        if not tracer_fdg:
-            if code_meaning_tracer:
-                if 'fluorodeoxyglucose' in code_meaning_tracer or 'fdg' in code_meaning_tracer:
-                    tracer_fdg = 'FDG'
+        if code_meaning_tracer and code_meaning_tracer.lower() in lc_kw:
+            tracer = lc_kw[code_meaning_tracer.lower()]
+            isotope = TRACER_TO_ISOTOPE[tracer]
 
-        # classify based on 'Radiopharmaceutical' if none is found
-        # get 'Radiopharmaceutical' from 'RadionuclideCodeSequence'
+        if tracer and not classification['Tracer']:
+            classification['Tracer'].append(tracer)
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
+
         radiopharma = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.Radiopharmaceutical')
-        if type(radiopharma) == str:
-            radiopharma = radiopharma.lower()
-        if not tracer_fdg:
-            if radiopharma:
-                if 'fluorodeoxyglucose' in radiopharma or 'fdg' in radiopharma:
-                    tracer_fdg = 'FDG'
 
-        # append to classifications if classified
-        if tracer_fdg:
-            classifications['Tracer'].append(tracer_fdg)
+        if radiopharma and radiopharma.lower() in lc_kw:
+            tracer = lc_kw[code_meaning_tracer.lower()]
+            isotope = TRACER_TO_ISOTOPE[tracer]
 
-        return classifications, info_object
+        if tracer and not classification['Tracer']:
+            classification['Tracer'].append(tracer)
+        if isotope and not classification['Isotope']:
+            classification['Isotope'].append(isotope)
+
+        return classification, info_object
 
 
 class BaseModalityClassifier(abc.ABC):
     """Modality Classifier abstract class
 
     Args:
-        dicom_header (dict): This is just the dicom header info similar to file.info['header']['dicom'].
+        header_dicom (dict): This is just the dicom header info similar to file.info['header']['dicom'].
         acquisition (flywheel.Acquisition): A flywheel acquisition container object
 
     Attributes:
-        sub_classifier_class (Class): The SubClassifier class to use to build the list of sub classifiers that will be
-            applied.
+        sub_classifiers (list): List of SubClassifier class that will be applied.
     """
 
-    sub_classifier_class = None
+    sub_classifiers = None
 
     def __init__(self, header_dicom, acquisition):
         self.header_dicom = header_dicom
         self.acquisition = acquisition
         self.classifiers = []
-        for subclass in self.sub_classifier_class.__subclasses__():
+        for subclass in self.sub_classifiers:
             self.classifiers.append(subclass(self.header_dicom, self.acquisition))
 
     def classify(self, classification, info_object):
         """Returns updated classification and info_object
 
         Args:
-            classifications (dict): A dictionary matching flywheel modality specific classification. Note the
+            classification (dict): A dictionary matching flywheel modality specific classification. Note the
                 classification for a modality can be fetched with `fw.get_modality('PT')['classification']`
                 for a PT modality for instance.
             info_object (dict): Info dictionary attribute of a file object.
@@ -515,7 +546,11 @@ class BaseModalityClassifier(abc.ABC):
 
 class PTClassifier(BaseModalityClassifier):
     """The PT Classifier class"""
-    sub_classifier_class = PTSubClassifier
+    sub_classifiers = [
+        IsotopePTSubClassifier,
+        TracerPTSubClassifier,
+        ProcessingPTSubClassifier
+    ]
 
 
 ######################################################################################
@@ -533,7 +568,7 @@ def classify_PT(df, dcm_metadata, acquisition):
     log.info("Determining PT Classification...")
     header_dicom = dcm_metadata['info']['header']['dicom']
     series_description = header_dicom.get('SeriesDescription') or ''
-    classifications = {}
+    classification = {}
     info_object = {}
 
     scan_coverage = None
@@ -543,18 +578,18 @@ def classify_PT(df, dcm_metadata, acquisition):
         info_object['ScanCoverage'] = scan_coverage
 
     # # Anatomy
-    classifications['Anatomy'] = get_anatomy_from_label(acquisition.label)
-    if not classifications['Anatomy']:
-        classifications['Anatomy'] = get_anatomy_from_label(series_description)
-    if not classifications['Anatomy']:
-        classifications['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
+    classification['Anatomy'] = get_anatomy_from_label(acquisition.label)
+    if not classification['Anatomy']:
+        classification['Anatomy'] = get_anatomy_from_label(series_description)
+    if not classification['Anatomy']:
+        classification['Anatomy'] = get_anatomy_from_scan_coverage(scan_coverage)
 
     # Classify Isotope, Processing, Tracer
     pt_classifier = PTClassifier(header_dicom=header_dicom, acquisition=acquisition)
-    classifications, info_object = pt_classifier.classify(classifications, info_object)
+    classification, info_object = pt_classifier.classify(classification, info_object)
 
     dcm_metadata['info'].update(info_object)
 
-    dcm_metadata['classification'] = classifications
+    dcm_metadata['classification'] = classification
 
     return dcm_metadata
