@@ -116,7 +116,7 @@ jobs:
       - run:
           name: Test
           command: |
-            docker run -it --volumes-from source-vol --name test ${DOCKER_IMAGE_NAME} \
+            docker run -it --volumes-from source-vol --name test --entrypoint '' ${DOCKER_IMAGE_NAME} \
               bash -c "pip install --user --no-warn-script-location -r tests/requirements.txt && PATH=/home/flywheel/.local/bin:$PATH && python -m pytest --junitxml=test-reports/junit.xml"
             docker cp test:/flywheel/v0/htmlcov .
             docker cp test:/flywheel/v0/test-reports .
