@@ -2,11 +2,11 @@
   "name": "dicom-metadata-classification",
   "label": "Metadata Classification: DICOM",
   "description": "This gear classifies DICOM images and updates the classification metadata of the input file",
-  "version": "1.4.1",
+  "version": "1.5.0_sbx_dev_0",
   "custom": {
     "gear-builder": {
       "category": "converter",
-      "image": "dicom-metadata-classification:1.4.1"
+      "image": "dicom-metadata-classification:1.5.0_sbx_dev_0"
     },
     "flywheel": {
       "suite": "Metadata Import and Validation"
