@@ -547,8 +547,8 @@ class BaseModalityClassifier(abc.ABC):
 class PTClassifier(BaseModalityClassifier):
     """The PT Classifier class"""
     sub_classifiers = [
-        TracerPTSubClassifier,
         IsotopePTSubClassifier,
+        TracerPTSubClassifier,
         ProcessingPTSubClassifier
     ]
 
