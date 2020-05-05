@@ -299,10 +299,12 @@ def get_anatomy_from_scan_coverage(scan_coverage):
 
 class PTSubClassifier(abc.ABC):
     """
-    An abstract base class that's the component in the composite design
-    pattern.
+    An abstract base class that's the sub-component in the composite design
+    pattern. Currently, this sub-component is used to define only leaves.
+    The composite of its leaves is defined as a concrete implementation of
+    the parent (abstract) component.
 
-    All children will define the method 'classify', which returns
+    All leaves will define the method 'classify', which returns
     classifications and info_object parameters.
     """
 
@@ -507,7 +509,34 @@ class TracerPTSubClassifier(PTSubClassifier):
 
 
 class BaseModalityClassifier(abc.ABC):
-    """Modality Classifier abstract class
+    """Modality Classifier abstract class.
+
+    This is the main component in the composite design pattern. Concrete
+    implementations of this adds leaves of a sub-composite class (e.g.,
+    PTSubClassifier) to create a composite of those leaves (e.g.,
+    PTClassifier). In this way, all composites, and leaves, can be treated
+    the same way (i.e., use the same arguments and methods). Further
+    explanation is below.
+
+    There are two abstract base classes involved (component and
+    sub-component): one for the modality and the other--a sub-classifier--for
+    the classifications of a modality. The base modality class simply
+    defines which concrete sub-classifiers (or leaves of a sub-component
+    class) a modality will use, essentially creating a composite of those
+    leaves (a sub-composite in the overall scheme).
+
+    Concrete sub-classifier classes (leaves) are added to the modality's
+    class variable list, sub_classifiers, to create a sub-composite. When a
+    concrete modality class is instantiated, all concrete sub-classifiers are
+    appended to the modality's instance variable, self.classifiers. Calling
+    the instantiated modality class' self.classify() method will invoke all
+    sub-classifier's classify() method, which is defined
+    individually for each concrete sub-classifier class (since the
+    sub-classifier's abstract base class has an abstract self.classify()
+    method).  The passed arguments, classification and info_object,
+    are updated as it passes through all sub-classifiers (i.e., updated as
+    they pass through all leaves of the sub-composite).
+
 
     Args:
         header_dicom (dict): This is just the dicom header info similar to file.info['header']['dicom'].
@@ -571,11 +600,9 @@ def classify_PT(df, dcm_metadata, acquisition):
     classification = {}
     info_object = {}
 
-    scan_coverage = None
-    if header_dicom['ImageType'][0] == 'ORIGINAL':
-        scan_coverage = common_utils.compute_scan_coverage(df)
-    if scan_coverage:
-        info_object['ScanCoverage'] = scan_coverage
+    scan_coverage, info_object = \
+        common_utils.compute_scan_coverage_if_original(header_dicom, df,
+                                                       info_object)
 
     # # Anatomy
     classification['Anatomy'] = get_anatomy_from_label(acquisition.label)

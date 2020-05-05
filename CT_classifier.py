@@ -424,23 +424,21 @@ def classify_CT(df, dcm_metadata, acquisition):
         dict: The dictionary for the CT classification
     '''
     log.info("Determining CT Classification...")
-    single_header_object = dcm_metadata['info']['header']['dicom']
-    series_description = single_header_object.get('SeriesDescription') or ''
+    header_dicom = dcm_metadata['info']['header']['dicom']
+    series_description = header_dicom.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
     
     if common_utils.is_localizer(acquisition.label) or common_utils.is_localizer(series_description) or len(df) < 10:
         classifications['Scan Type'] = ['Localizer']
     else:
-        classifications['Scan Type'] = get_scan_type_classification(acquisition.label, single_header_object)
+        classifications['Scan Type'] = get_scan_type_classification(acquisition.label, header_dicom)
         if not classifications['Scan Type']:
-            classifications['Scan Type'] = get_scan_type_classification(series_description, single_header_object)
-            
-        scan_coverage = None
-        if single_header_object['ImageType'][0] == 'ORIGINAL':
-            scan_coverage = common_utils.compute_scan_coverage(df)
-        if scan_coverage:
-            info_object['ScanCoverage'] = scan_coverage
+            classifications['Scan Type'] = get_scan_type_classification(series_description, header_dicom)
+
+        scan_coverage, info_object = \
+            common_utils.compute_scan_coverage_if_original(header_dicom, df,
+                                                           info_object)
         
         # # Reconstruction window
         reconstruction_window = None
@@ -458,7 +456,6 @@ def classify_CT(df, dcm_metadata, acquisition):
             if scan_orientation:
                 info_object['ScanOrientation'] = scan_orientation
 
-
         # # Anatomy
         classifications['Anatomy'] = get_anatomy_from_label(acquisition.label)
         if not classifications['Anatomy']:
@@ -470,7 +467,6 @@ def classify_CT(df, dcm_metadata, acquisition):
         classifications['Contrast'] = get_contrast_classification(acquisition.label)
         if not classifications['Contrast']:
             classifications['Contrast'] = get_contrast_classification(series_description)
-
 
         if scan_coverage:
             spacing_between_slices = scan_coverage / len(df)

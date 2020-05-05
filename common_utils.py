@@ -6,11 +6,14 @@ log = logging.getLogger(__name__)
 
 # Scan Coverage
 def compute_scan_coverage(df):
-    df['ImagePositionPatient-Z'] = df.apply(lambda x: x['ImagePositionPatient'][2], axis=1)
-    max = df['ImagePositionPatient-Z'].max()
-    min = df['ImagePositionPatient-Z'].min()
-    result = max - min
-    scan_coverage = result if result > 0 else result * -1
+    if 'ImagePositionPatient' in df.keys():
+        df['ImagePositionPatient-Z'] = df.apply(lambda x: x['ImagePositionPatient'][2], axis=1)
+        max = df['ImagePositionPatient-Z'].max()
+        min = df['ImagePositionPatient-Z'].min()
+        result = max - min
+        scan_coverage = result if result > 0 else result * -1
+    else:
+        scan_coverage = None
     return scan_coverage
 
 
@@ -43,3 +46,13 @@ def is_localizer(label):
         re.compile('topogram', re.IGNORECASE)
         ]
     return regex_search_label(regexes, label)
+
+
+def compute_scan_coverage_if_original(header_dicom, df, info_object):
+    scan_coverage = None
+    if header_dicom.get('ImageType', [None])[0] == 'ORIGINAL':
+        scan_coverage = compute_scan_coverage(df)
+    if scan_coverage:
+        info_object['ScanCoverage'] = scan_coverage
+
+    return scan_coverage, info_object
