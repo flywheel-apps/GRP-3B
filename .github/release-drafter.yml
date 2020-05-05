@@ -6,6 +6,6 @@ template: |
   _[IF PR'S TITLE IS NOT EXPLICIT ENOUGH, ADD DETAILS TO IT]_
   $CHANGES
 
-  ## Impact On Gear Outputs
+  ## Impact On Gear Output
 
   _[LIST HOW STRUCTURE AND/OR VALUES OF GEAR OUTPUTS (e.g. FILES AND METADATA) ARE IMPACTED]_
