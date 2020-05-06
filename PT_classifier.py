@@ -514,7 +514,7 @@ class BaseModalityClassifier(abc.ABC):
     This is the main component in the composite design pattern. Concrete
     implementations of this adds leaves of a sub-composite class (e.g.,
     PTSubClassifier) to create a composite of those leaves (e.g.,
-    PTClassifier). In this way, all composites, and leaves, can be treated
+    PTClassifier). In this way, all composites and leaves can be treated
     the same way (i.e., use the same arguments and methods). Further
     explanation is below.
 

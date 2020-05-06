@@ -6,14 +6,59 @@ log = logging.getLogger(__name__)
 
 # Scan Coverage
 def compute_scan_coverage(df):
+    log.info(
+        f"Attempting to compute scan coverage..."
+    )
+    scan_coverage = None
+    dicom_std_link = \
+        "https://dicom.innolitics.com/ciods/pet-image/image-plane/00200032"
     if 'ImagePositionPatient' in df.keys():
-        df['ImagePositionPatient-Z'] = df.apply(lambda x: x['ImagePositionPatient'][2], axis=1)
-        position_max = df['ImagePositionPatient-Z'].max()
-        position_min = df['ImagePositionPatient-Z'].min()
-        result = position_max - position_min
-        scan_coverage = result if result > 0 else result * -1
+        image_positions = df['ImagePositionPatient']
+
+        # Check if all image positions are not None. Log error.
+        if all(image_positions.isnull().apply(lambda x: not x)):
+            # Check if all values are type list. Log type error if not.
+            if all(image_positions.apply(lambda x: type(x) == list)):
+                # Check if all lists are at least length 3. Log missing
+                # values error if not.
+                if all(image_positions.apply(lambda x: len(x) == 3)):
+                    # Check that all values in the z axis are type float
+                    if all(image_positions.apply(lambda x:
+                                                 type(x[2]) == float)):
+
+                        # Compute scan coverage if all conditions are met
+                        z_position = image_positions.apply(lambda x: x[2])
+                        result = z_position.max() - z_position.min()
+                        scan_coverage = result if result > 0 else result * -1
+                        log.info(
+                            f"Computed scan coverage ({scan_coverage})"
+                        )
+                    else:
+                        log.error(
+                            f"Cannot compute scan coverage. Some or all "
+                            f"'ImagePositionPatient' z-axis values of dicom "
+                            f"slices are not type 'float'.")
+                else:
+                    log.error(
+                        f"Cannot compute scan coverage. Some or all "
+                        f"'ImagePositionPatient' values of dicom slices "
+                        f"are not length 3. This is required. See"
+                        f" {dicom_std_link}")
+            else:
+                log.error(
+                    f"Cannot compute scan coverage. Some or all "
+                    f"'ImagePositionPatient' values are not type 'list'.")
+        else:
+            log.error(
+                f"Cannot compute scan coverage.. Some or all "
+                f"'ImagePositionPatient' values of dicom slices "
+                f"are missing. This is required. See {dicom_std_link}")
+
     else:
-        scan_coverage = None
+        log.error(
+            f"Cannot compute scan coverage. 'ImagePositionPatient' not in "
+            f"dataframe (dicom headers). This is required. See "
+            f"{dicom_std_link}")
     return scan_coverage
 
 
