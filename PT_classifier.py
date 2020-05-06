@@ -339,6 +339,14 @@ class PTSubClassifier(abc.ABC):
         """
         return self.header_dicom.get(dotty_key)
 
+    @staticmethod
+    def warn_if_isotope_different_from_previously_found(
+            isotope, classification):
+        if classification['Isotope']:
+            if isotope not in classification['Isotope'] and (isotope is not None):
+                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
+                            f'({classification["Isotope"]})')
+
 
 class IsotopePTSubClassifier(PTSubClassifier):
 
@@ -366,10 +374,8 @@ class IsotopePTSubClassifier(PTSubClassifier):
         if code_value_isotope in ISOTOPE_CODES:
             isotope = ISOTOPE_CODES[code_value_isotope]
 
-        if classification['Isotope']:
-            if isotope not in classification['Isotope']:
-                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
-                            f'({classification["Isotope"]})')
+        self.warn_if_isotope_different_from_previously_found(
+            isotope=isotope, classification=classification)
 
         if isotope and not classification['Isotope']:
             classification['Isotope'].append(isotope)
@@ -388,10 +394,8 @@ class IsotopePTSubClassifier(PTSubClassifier):
         if code_meaning_isotope and code_meaning_isotope.lower() in lc_kw:
             isotope = lc_kw[code_meaning_isotope.lower()]
 
-        if classification['Isotope']:
-            if isotope not in classification['Isotope']:
-                log.warning(f'Isotope from CodeMeaning ({isotope}) is different from the one previously found '
-                            f'({classification["Isotope"]})')
+        self.warn_if_isotope_different_from_previously_found(
+            isotope=isotope, classification=classification)
 
         if isotope and not classification['Isotope']:
             classification['Isotope'].append(isotope)
@@ -469,6 +473,9 @@ class TracerPTSubClassifier(PTSubClassifier):
             tracer = TRACER_CODES[code_value_tracer]
             isotope = TRACER_TO_ISOTOPE[tracer]
 
+        self.warn_if_isotope_different_from_previously_found(
+            isotope=isotope, classification=classification)
+
         if tracer and not classification['Tracer']:
             classification['Tracer'].append(tracer)
         if isotope and not classification['Isotope']:
@@ -488,6 +495,9 @@ class TracerPTSubClassifier(PTSubClassifier):
             tracer = lc_kw[code_meaning_tracer.lower()]
             isotope = TRACER_TO_ISOTOPE[tracer]
 
+        self.warn_if_isotope_different_from_previously_found(
+            isotope=isotope, classification=classification)
+
         if tracer and not classification['Tracer']:
             classification['Tracer'].append(tracer)
         if isotope and not classification['Isotope']:
@@ -499,6 +509,9 @@ class TracerPTSubClassifier(PTSubClassifier):
         if radiopharma and radiopharma.lower() in lc_kw:
             tracer = lc_kw[code_meaning_tracer.lower()]
             isotope = TRACER_TO_ISOTOPE[tracer]
+
+        self.warn_if_isotope_different_from_previously_found(
+            isotope=isotope, classification=classification)
 
         if tracer and not classification['Tracer']:
             classification['Tracer'].append(tracer)
