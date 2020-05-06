@@ -95,10 +95,13 @@ def is_localizer(label):
 
 def compute_scan_coverage_if_original(header_dicom, df, info_object):
     scan_coverage = None
+    log.info(
+        f"Checking if header 'ImageType' == 'ORIGINAL' to determine if scan "
+        f"coverage should be computed..."
+    )
 
     # Check for ImageType, which is always at the 0'd index and either
     # 'ORIGINAL' or 'DERIVED'
-    #
     dicom_std_link = \
         "https://dicom.innolitics.com/ciods/cr-image/general-image/00080008"
     image_type = header_dicom.get('ImageType')
@@ -108,10 +111,11 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
             if image_type[0] == 'ORIGINAL':
                 is_original = True
             elif image_type[0] == 'DERIVED':
-                # do nothing
-                pass
+                log.info(f"Cannot computed scan coverage. 'ImageType' is "
+                         f"{image_type[0]}")
             else:
-                log.warning(
+                log.error(
+                    f"Cannot determine if scan coverage should be computed. "
                     f"Dicom header 'ImageType[0]' ({image_type[0]}) is not "
                     f"'ORIGINAL' or 'DERIVED'. See {dicom_std_link}"
                 )
@@ -124,16 +128,18 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
             if image_type == 'ORIGINAL':
                 is_original = True
             elif image_type == 'DERIVED':
-                # do nothing
-                pass
+                log.info(f"Cannot compute scan coverage. 'ImageType' is "
+                         f"{image_type}")
             else:
                 log.warning(
+                    f"Cannot determine if scan coverage should be computed. "
                     f"Dicom header 'ImageType' ({image_type}) is not "
                     f"'ORIGINAL' or 'DERIVED'. See {dicom_std_link}"
                 )
         else:
             # Throw error
-            log.warning(
+            log.error(
+                f"Cannot determine if scan coverage should be computed. "
                 f"Dicom header 'ImageType' is not a list or string, type is "
                 f"{type(image_type)})")
 
@@ -141,7 +147,8 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
             scan_coverage = compute_scan_coverage(df)
     else:
         log.warning(
-            f"Could not find 'ImageType' in dicom header {header_dicom}"
+            f"Cannot determine if scan coverage should be computed. Could "
+            f"not find 'ImageType' in dicom header {header_dicom}"
         )
 
     if scan_coverage:
