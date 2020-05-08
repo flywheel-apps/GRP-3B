@@ -33,9 +33,9 @@ def compute_scan_coverage(df):
         log.error(
             f"Cannot compute scan coverage. Some or all "
             f"'ImagePositionPatient' values are not type 'list'.")
-            # Check if all lists are at least length 3. Log missing
-            # values error if not.
         return None
+    # Check if all lists are at least length 3. Log missing
+    # values error if not.
     if not all(image_positions.apply(lambda x: len(x) == 3)):
         log.error(
             f"Cannot compute scan coverage. Some or all "
