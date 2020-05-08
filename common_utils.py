@@ -114,7 +114,7 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
         return None, info_object
 
     # Check type is list
-    if type(image_type) is not list:
+    if (type(image_type) is not list):
         # Throw error
         raise TypeError(
             f"Cannot determine if scan coverage should be computed. "
@@ -122,19 +122,24 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
             f"{type(image_type)}). Try re-running latest GRP-3 "
             f"metadata import and validation gear.")
 
-    # Check if not original or derived
-    if (image_type[0] is not 'ORIGINAL') and (image_type is not 'DERIVED'):
+    # Check if it's 'DERIVED'
+    if (image_type[0] == 'DERIVED'):
+        log.info(f"Cannot compute scan coverage. 'ImageType' is "
+                 f"{image_type[0]}")
+        return None, info_object
+
+    # Check if it's anything other than original, since we already checked
+    # 'DERIVED' 'ORIGINAL'
+    if (image_type[0] != 'ORIGINAL'):   # Not sure why it requires the
+                                        # parentheses on Flywheel...but doesn't
+                                        # work if removed...seems like
+                                        # Python version used in Docker may
+                                        # be different
         log.error(
             f"Cannot determine if scan coverage should be computed. "
             f"Dicom header 'ImageType[0]' ({image_type[0]}) is not "
             f"'ORIGINAL' or 'DERIVED'. See {dicom_std_link}"
         )
-        return None, info_object
-
-    # Check if it's 'DERIVED'
-    if image_type[0] == 'DERIVED':
-        log.info(f"Cannot computed scan coverage. 'ImageType' is "
-                 f"{image_type[0]}")
         return None, info_object
 
     # Compute if all checks are passed
