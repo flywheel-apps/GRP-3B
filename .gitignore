@@ -4,3 +4,4 @@
 *.xml
 .idea/vcs.xml
 __pycache__/
+tests/test_scan_coverage.py
