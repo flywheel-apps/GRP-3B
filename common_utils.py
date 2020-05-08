@@ -123,7 +123,7 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
             f"metadata import and validation gear.")
 
     # Check if not original or derived
-    if (image_type[0] is not 'ORIGINAL') or (image_type is not 'DERIVED'):
+    if (image_type[0] is not 'ORIGINAL') and (image_type is not 'DERIVED'):
         log.error(
             f"Cannot determine if scan coverage should be computed. "
             f"Dicom header 'ImageType[0]' ({image_type[0]}) is not "
