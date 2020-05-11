@@ -498,7 +498,11 @@ def classify_MR(df, dcm, dcm_metadata):
 
     # Determine whether ImageOrientationPatient is constant
     if hasattr(df, 'ImageOrientationPatient'):
-        uniqueiop = df.ImageOrientationPatient.is_unique
+        if isinstance(df.ImageOrientationPatient[0], list):
+            # list are no hashable and is_unique raises
+            uniqueiop = df.ImageOrientationPatient.apply(lambda x: tuple(x)).is_unique
+        else:
+            uniqueiop = df.ImageOrientationPatient.is_unique
     else:
         uniqueiop = []
     # Classification (# Only set classification if the modality is MR)
