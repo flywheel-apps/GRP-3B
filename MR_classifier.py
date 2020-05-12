@@ -304,30 +304,28 @@ def get_param_classification(dcm, slice_number, unique_iop):
     sd = dcm.get('SeriesDescription')
 
     # Log empty parameters
-    if not tr:
+    if not isinstance(tr, (int, float)):
+        tr = None
         log.warning('RepetitionTime unset')
-        
     else:
         log.info('tr=%s' % str(tr))
         
-    if not te:
+    if not isinstance(te, (int, float)):
+        te = None
         log.warning('EchoTime unset')
-        
     else:
         log.info('te=%s' % str(te))
         
-    if not ti:
+    if not isinstance(ti, (int, float)):
+        ti = None
         log.warning('InversionTime unset')
-        
     else:
         log.info('ti=%s' % str(ti))
         
     if not sd:
         log.warning('SeriesDescription unset')
-        
     else:
         log.info('sd=%s' % str(sd))
-        
 
     if (te and te < 30) and (tr and tr < 800):
         classification_dict['Measurement'] = ["T1"]
