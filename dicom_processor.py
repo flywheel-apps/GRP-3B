@@ -147,7 +147,7 @@ def get_dcm_data_dict(dcm_path, force=False):
         'size': file_size,
         'force': force,
         'pydicom_exception': False,
-        'header': None
+        'header': {}
     }
     if file_size > 0:
         try:
