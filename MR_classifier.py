@@ -1,3 +1,4 @@
+"""MR classification"""
 import os
 import json
 import re
@@ -6,12 +7,76 @@ import dicom_processor
 import common_utils
 import logging
 
-
 log = logging.getLogger(__name__)
-#!/usr/bin/env python
-'''
-Infer acquisition classification by parsing the acquisition label.
-'''
+
+
+def feature_check(label):
+    """Check the label for a list of features."""
+
+    feature_list = ['2D', 'AAscout', 'Spin-Echo', 'Gradient-Echo',
+                   'EPI', 'WASSR', 'FAIR', 'FAIREST', 'PASL', 'EPISTAR',
+                   'PICORE', 'pCASL', 'MPRAGE', 'MP2RAGE', 'FLAIR',
+                   'SWI', 'QSM', 'RMS', 'DTI', 'DSI', 'DKI', 'HARDI',
+                   'NODDI', 'Water-Reference', 'Transmit-Reference',
+                   'SBRef', 'Uniform', 'Singlerep', 'QC', 'TRACE',
+                   'FA', 'MIP', 'Navigator', 'Contrast-Agent',
+                   'Phase-Contrast', 'TOF', 'VASO', 'iVASO', 'DSC',
+                   'DCE', 'Task', 'Resting-State', 'PRESS', 'STEAM',
+                   'M0', 'Phase-Reversed', 'Spiral', 'SPGR',
+                   'Quantitative', 'Multi-Shell', 'Multi-Echo', 'Multi-Flip',
+                   'Multi-Band', 'Steady-State', '3D', 'Compressed-Sensing',
+                   'Eddy-Current-Corrected', 'Fieldmap-Corrected',
+                   'Gradient-Unwarped', 'Motion-Corrected', 'Physio-Corrected',
+                   'Derived', 'In-Plane', 'Phase', 'Magnitude']
+
+    return _find_matches(label, feature_list)
+
+
+def measurement_check(label):
+    '''Check the label for a list of measurements.'''
+
+    measurement_list = ['MRA', 'CEST', 'T1rho', 'SVS', 'CSI', 'EPSI', 'BOLD',
+                        'Phoenix','B0', 'B1', 'T1', 'T2', 'T2*', 'PD', 'MT',
+                        'Perfusion','Diffusion', 'Susceptibility', 'Fingerprinting']
+
+    return _find_matches(label, measurement_list)
+
+
+def intent_check(label):
+    '''Check the label for a list of intents.'''
+
+    intent_list = [ 'Localizer', 'Shim', 'Calibration', 'Fieldmap', 'Structural',
+                    'Functional', 'Screenshot', 'Non-Image', 'Spectroscopy' ]
+
+    return _find_matches(label, intent_list)
+
+
+def _find_matches(label, list):
+    """For a given list find those entries that match a given label."""
+
+    matches = []
+
+    for l in list:
+        regex = _compile_regex(l)
+        if regex.findall(label):
+            matches.append(l)
+
+    return matches
+
+
+def _compile_regex(string):
+    """Generate the regex for label checking"""
+    # Escape * for T2*
+    if string == 'T2*':
+        string = 'T2\*'
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)|(t2star)" % (string,string,string,string), re.IGNORECASE)
+    # Prevent T2 from capturing T2*
+    elif string == 'T2':
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s$)|(%s_)" % (string,string,string,string), re.IGNORECASE)
+    else:
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)" % (string,string,string,string), re.IGNORECASE)
+    return regex
+
 
 # Anatomy, T1
 def is_anatomy_t1(label):
@@ -225,8 +290,6 @@ def is_post(label):
     return found
 
 
-
-
 def infer_classification(label):
     '''
     Get classification based on acquisition label
@@ -286,6 +349,27 @@ def infer_classification(label):
             classification['Intent'] = ['Screenshot']
         else:
             print(label.strip('\n') + ' --->>>> unknown')
+
+        # Add features to classification
+        features = feature_check(label)
+        if features:
+            class_features = classification.get('Features', [])
+            [class_features.append(x) for x in features if x not in class_features]
+            classification['Features'] = class_features
+
+        # Add measurements to classification
+        measurements = measurement_check(label)
+        if measurements:
+            class_measurement = classification.get('Measurement', [])
+            [class_measurement.append(x) for x in measurements if x not in class_measurement]
+            classification['Measurement'] = class_measurement
+
+        # Add intents to classification
+        intents = intent_check(label)
+        if intents:
+            class_intent = classification.get('Intent', [])
+            [class_intent.append(x) for x in intents if x not in class_intent]
+            classification['Intent'] = class_intent
 
     return classification
 

@@ -28,3 +28,4 @@ def test_classify_on_a_sample_MR():
         res = classify_MR(df, dcm, dcm_metadata)
         assert res['classification']['Intent'] == ['Structural']
         assert res['classification']['Measurement'] == ['T2']
+        assert res['classification']['Features'] == ['FLAIR']
