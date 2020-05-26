@@ -149,3 +149,54 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
         info_object['ScanCoverage'] = scan_coverage
 
     return scan_coverage, info_object
+
+
+def get_str_tag_from_dicom_header_dict(header_dicom: dict, tag_name: str):
+    """
+    Return a string for a dicom header tag that's expected to be a string.
+
+    This handles lists by converting them to strings. If anything other than a
+    list or string is found, it raises a TypeError.
+
+    Parameters
+    ----------
+    header_dicom (dict): a dicom header in dict form
+    tag_name (str): the dicom tag to retrieve
+
+    Examples
+    --------
+    >>> header_dicom = {'SeriesDescription': ['my', 'test', 'description']}
+    >>> get_str_tag_from_dicom_header_dict(header_dicom, 'SeriesDescription')
+    'my test description'
+    >>> header_dicom = {'SeriesDescription': ['my', 'nested list test', ['description']]}
+    >>> get_str_tag_from_dicom_header_dict(header_dicom, 'SeriesDescription')
+    "my nested list test ['description']"
+    >>> header_dicom = {'SeriesDescription': {'my_dict': 'test'}}
+    >>> get_str_tag_from_dicom_header_dict(header_dicom, 'SeriesDescription')
+    Traceback (most recent call last):
+        ...
+    TypeError: Dicom header tag 'SeriesDescription' is not a list or a string, got type '<class 'dict'>' for '{'my_dict': 'test'}'.
+    """
+    result = header_dicom.get(tag_name, '')
+
+    # return if it's string (so 'None' returns are converted to '' in .get())
+    if isinstance(result, str):
+        return result
+
+    # Raise an error if we don't have a list or a string (string handled in
+    # previous check)
+    if not isinstance(result, list):
+        raise TypeError(f"Dicom header tag '{tag_name}' is not a list "
+                        f"or a string, got type '{type(result)}' "
+                        f"for '{result}'.")
+
+    # Must be a list, so convert list to string. First convert all values in
+    # list to string (note: this even converts other rudimentary data
+    # structures, like lists and dicts, to strings).
+    result = [str(ele) for ele in result]
+    return ' '.join(result)
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
