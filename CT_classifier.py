@@ -425,8 +425,7 @@ def classify_CT(df, dcm_metadata, acquisition):
     '''
     log.info("Determining CT Classification...")
     header_dicom = dcm_metadata['info']['header']['dicom']
-    series_description = common_utils.get_str_tag_from_dicom_header_dict(
-        header_dicom, tag_name='SeriesDescription')
+    series_description = header_dicom.get('SeriesDescription') or ''
     classifications = {}
     info_object = {}
     
