@@ -14,6 +14,33 @@ log = logging.getLogger(__name__)
 
 SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
 
+# -----------------------------------------------------------------------------
+# Apply patch to Dotty.get() method
+# -----------------------------------------------------------------------------
+
+def patch_get(self, key, default=None):
+    """Get value from deep key or default if key does not exist.
+​
+            This method match 1:1 with dict .get method except that it
+            accepts deeply nested key with dot notation.
+​
+            :param str key: Single key or chain of keys
+            :param Any default: Default value if deep key does not exist
+            :return: Any or default value
+            """
+    try:
+        return self.__getitem__(key)
+    except (KeyError, IndexError):
+        return default
+
+
+Dotty.get = patch_get
+
+
+# -----------------------------------------------------------------------------
+# Define module dictionaries
+# -----------------------------------------------------------------------------
+
 # http://dicom.nema.org/medical/dicom/2015c/output/chtml/part16/sect_CID_4021.html
 TRACER_CODES = {
     'C-B1031': 'FDG',  #Fluorodeoxyglucose
@@ -57,9 +84,11 @@ ISOTOPE_MEANINGS = {
 }
 
 
-
-######################################################################################
-######################################################################################
+# -----------------------------------------------------------------------------
+# Module methods
+# FUTURE: most, if not all of these, are repeats of methods defined in other
+# modules. Create a class or package instead of copy/pasting these in modules.
+# -----------------------------------------------------------------------------
 
 # Check multiple occurrence of anatomy
 def is_multiple_occurrence(label, string):
