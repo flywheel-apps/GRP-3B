@@ -442,16 +442,41 @@ def get_ranged_anatomy(label: str):
 
     return new_anatomy
 
-def get_anatomy_from_label(label):
+
+def get_anatomy_from_label(label: str):
+    """
+    Returns a list of anatomy classifications.
+
+    Tries to get a ranged anatomy if 'to' is found in the label. If no
+    ranged anatomy is found, it re-attempts to classify using the entire label.
+
+    Parameters
+    ----------
+    label (str): a label that might contain anatomy information.
+
+    Examples/Tests
+    --------------
+    # Return ncap, even if 'to' is found in label. FUTURE: this is
+    # non-deterministic. ncap is returned, but returned list is never sorted
+    # correctly. Fix in future.
+    get_anatomy_from_label("NCAP to some_other_thing")
+    ['Chest', 'Neck', 'Abdomen', 'Pelvis']
+
+    # Return head
+    >>> get_anatomy_from_label("Head is here")
+    ['Head']
+    """
     new_anatomy = []
     label_lower = label.lower()
     if is_to(label_lower):
         new_anatomy = get_ranged_anatomy(label)
-    else:
+
+    if not new_anatomy:
         new_anatomy = get_anatomy_classification(label)
 
     return new_anatomy
-    
+
+
 def get_anatomy_from_scan_coverage(scan_coverage):
     new_anatomy = []
     if is_head(scan_coverage):
