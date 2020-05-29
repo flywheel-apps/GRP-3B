@@ -4,10 +4,12 @@ import common_utils
 from operator import add
 from functools import reduce
 import logging
+from pprint import pformat
+
+from common_utils import SEQUENCE_ANATOMY
 
 log = logging.getLogger(__name__)
 
-SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
 
 ######################################################################################
 ######################################################################################
@@ -252,6 +254,7 @@ def is_delayed_equil(description):
 ######################################################################################
 ######################################################################################
 
+
 def get_scan_type_classification(label, single_header_object):
     new_scan_type = []
     
@@ -322,24 +325,122 @@ def get_anatomy_classification(label):
     return new_anatomy
 
 
-def get_ranged_anatomy(label):
-    new_anatomy = []
+def get_ranged_anatomy(label: str):
+    """
+    Returns a ranged anatomy.
+
+    The ranged anatomy must conform to order of the list SEQUENCE_ANATOMY.
+
+    Parameters
+    ----------
+    label (string): must contain 'to' to classify a ranged anatomy.
+
+    Examples/Tests
+    --------------
+    # Returns None if missing 'to' from label
+    >>> get_ranged_anatomy("missing word")
+    Traceback (most recent call last):
+        ...
+    ValueError: Argument label ('missing word') must contain 'to'.
+
+    # Returns None if first anatomy could not be classified
+    >>> get_ranged_anatomy("incorrect to pelvis")
+
+
+    # Returns None if first anatomy not in SEQUENCE_ANATOMY
+    >>> get_ranged_anatomy("NCAP to pelvis")
+
+
+    # Returns None if last anatomy could not be classified
+    >>> get_ranged_anatomy("head to incorrect")
+
+
+    # Returns None if last anatomy not in SEQUENCE_ANATOMY
+    >>> get_ranged_anatomy("head to ncap")
+
+
+    # Returns the first anatomy if first and last are the same
+    >>> get_ranged_anatomy("head to head")
+    'Head'
+
+    # Returns erorr if first anatomy index idex is greater than last anatomy index
+    >>> get_ranged_anatomy("pelvis to head")
+    Traceback (most recent call last):
+        ...
+    ValueError: Ranged anatomy does not conform to sequence. First anatomy index ('4') is greater than last anatomy index ('0'). First anatomy ('Pelvis') should come before last anatomy ('Head') to conform to SEQUENCE_ANATOMY:['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
+    """
     label_lower = label.lower()
     split_label = re.split(r"[^a-zA-Z0-9\s]|\s+", label_lower)
-    idx = split_label.index('to')
-    
-    first_anatomy = get_anatomy_classification(split_label[idx-1])
-    first_anatomy = reduce(add, first_anatomy)
-    first_anatomy_idx = SEQUENCE_ANATOMY.index(first_anatomy)
-    
-    last_anatomy = get_anatomy_classification(split_label[idx+1])
-    last_anatomy = reduce(add, last_anatomy)
-    last_anatomy_idx = SEQUENCE_ANATOMY.index(last_anatomy)
-    
-    new_anatomy = SEQUENCE_ANATOMY[first_anatomy_idx:last_anatomy_idx+1]
-    
-    return new_anatomy
 
+    # Check 'to' is in passed label
+    if 'to' not in split_label:
+        raise ValueError(
+            f"Argument label ('{label}') must contain 'to'."
+        )
+    idx = split_label.index('to')
+
+    # classify the first ranged anatomy (left of 'to')
+    first_anatomy = get_anatomy_classification(split_label[idx - 1])
+    if not first_anatomy:
+        log.error(
+            f"Could not create first anatomy from label "
+            f"'{split_label[idx - 1]}'. Got '{first_anatomy}'")
+        return None
+    first_anatomy = reduce(add, first_anatomy)
+    if first_anatomy not in SEQUENCE_ANATOMY:
+        log.error(
+            f"Could not find first anatomy '{first_anatomy}' in ranged "
+            f"anatomy search. Anatomy must be one of the following:\n"
+            f"{pformat(SEQUENCE_ANATOMY)}")
+        return None
+
+    first_anatomy_idx = SEQUENCE_ANATOMY.index(first_anatomy)
+
+    # classify the second ranged anatomy (right of 'to')
+    last_anatomy = get_anatomy_classification(split_label[idx + 1])
+    if not last_anatomy:
+        log.error(
+            f"Could not create second anatomy from label "
+            f"'{split_label[idx + 1]}'. Got '{last_anatomy}'")
+        return None
+    last_anatomy = reduce(add, last_anatomy)
+    if last_anatomy not in SEQUENCE_ANATOMY:
+        log.error(
+            f"Could not find last anatomy '{last_anatomy}' in ranged "
+            f"anatomy search. Anatomy must be one of the following:\n"
+            f"{pformat(SEQUENCE_ANATOMY)}")
+        return None
+    last_anatomy_idx = SEQUENCE_ANATOMY.index(last_anatomy)
+
+    # Check that the first and last anatomies aren't the same. Return first
+    # one if so.
+    if first_anatomy_idx == last_anatomy_idx:
+        new_anatomy = SEQUENCE_ANATOMY[first_anatomy_idx]
+        log.warning(f"This is not a ranged anatomy in the form '["
+                    f"first_anatomy] to [last_anatomy]'. The first and last "
+                    f"anatomies are the same. \n "
+                    f"Using only the first one "
+                    f"('{new_anatomy}')")
+        return new_anatomy
+
+    # Ensure that it's actually a ranged anatomy by verifying that the first
+    # anatomy index is before the last anatomy index
+    if first_anatomy_idx > last_anatomy_idx:
+        first_anatomy = SEQUENCE_ANATOMY[first_anatomy_idx]
+        last_anatomy = SEQUENCE_ANATOMY[last_anatomy_idx]
+        raise ValueError(
+            f"Ranged anatomy does not conform to sequence. First anatomy "
+            f"index ('{first_anatomy_idx}') is greater than last anatomy "
+            f"index ('{last_anatomy_idx}'). "
+            f"First anatomy ('{first_anatomy}') should come before last "
+            f"anatomy ('{last_anatomy}') to conform to SEQUENCE_ANATOMY:"
+            f"{SEQUENCE_ANATOMY}"
+        )
+
+    # Get the sequence anatomy if it passes all tests
+    new_anatomy = SEQUENCE_ANATOMY[first_anatomy_idx:last_anatomy_idx + 1]
+
+    return new_anatomy
 
 def get_anatomy_from_label(label):
     new_anatomy = []
@@ -348,9 +449,8 @@ def get_anatomy_from_label(label):
         new_anatomy = get_ranged_anatomy(label)
     else:
         new_anatomy = get_anatomy_classification(label)
-    
-    return new_anatomy
 
+    return new_anatomy
     
 def get_anatomy_from_scan_coverage(scan_coverage):
     new_anatomy = []
@@ -477,3 +577,8 @@ def classify_CT(df, dcm_metadata, acquisition):
     dcm_metadata['classification'] = classifications
 
     return dcm_metadata
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

@@ -9,10 +9,10 @@ import logging
 from dotty_dict import Dotty
 
 from CT_classifier import is_lung_window
+from common_utils import SEQUENCE_ANATOMY
 
 log = logging.getLogger(__name__)
 
-SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
 
 # -----------------------------------------------------------------------------
 # Apply patch to Dotty.get() method

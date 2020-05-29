@@ -5,6 +5,8 @@ import ast
 log = logging.getLogger(__name__)
 
 
+SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremities', 'Upper Extremities', 'Whole Body']
+
 # Scan Coverage
 def compute_scan_coverage(df):
     log.info(
@@ -149,3 +151,9 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
         info_object['ScanCoverage'] = scan_coverage
 
     return scan_coverage, info_object
+
+
+# -----------------------------------------------------------------------------
+# Anatomy utility functions
+# FUTURE: put these in AnatomyClassifier class
+# -----------------------------------------------------------------------------
