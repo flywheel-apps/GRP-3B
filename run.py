@@ -61,9 +61,8 @@ if __name__ == '__main__':
     # Get the modality
     modality = config['inputs']['dicom']['object']['modality']
     # Get Acquisition
-    # with flywheel.GearContext() as gear_context:
-    #         acquisition = gear_context.client.get(gear_context.destination['id'])
-    acquisition = flywheel.Acquisition(label='toto')
+    with flywheel.GearContext() as gear_context:
+            acquisition = gear_context.client.get(gear_context.destination['id'])
     df, dcm = dicom_processor.process_dicom(dicom_filepath)
 
     # Check that metadata import ran
