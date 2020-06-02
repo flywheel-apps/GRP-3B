@@ -11,7 +11,14 @@ log = logging.getLogger(__name__)
 
 
 def feature_check(label):
-    """Check the label for a list of features."""
+    """Check the label for a list of features.
+
+    Args:
+        label (str): String to regexp match with element of feature_list
+
+    Returns:
+        list: List of feature_list elements that regex matched with label
+    """
 
     feature_list = ['2D', 'AAscout', 'Spin-Echo', 'Gradient-Echo',
                    'EPI', 'WASSR', 'FAIR', 'FAIREST', 'PASL', 'EPISTAR',
@@ -33,7 +40,14 @@ def feature_check(label):
 
 
 def measurement_check(label):
-    '''Check the label for a list of measurements.'''
+    """Check the label for a list of measurements.
+
+    Args:
+        label (str): String to regexp match with element of measurement_list
+
+    Returns:
+        list: List of measurement_list elements that regex matched with label
+    """
 
     measurement_list = ['MRA', 'CEST', 'T1rho', 'SVS', 'CSI', 'EPSI', 'BOLD',
                         'Phoenix','B0', 'B1', 'T1', 'T2', 'T2*', 'PD', 'MT',
@@ -43,20 +57,34 @@ def measurement_check(label):
 
 
 def intent_check(label):
-    '''Check the label for a list of intents.'''
+    """Check the label for a list of intents.
 
-    intent_list = [ 'Localizer', 'Shim', 'Calibration', 'Fieldmap', 'Structural',
-                    'Functional', 'Screenshot', 'Non-Image', 'Spectroscopy' ]
+    Args:
+        label (str): String to regexp match with element of intent_list
+
+    Returns:
+        list: List of intent_list elements that regex matched with label
+    """
+
+    intent_list = [ 'Localizer',
+                    'Shim',
+                    'Calibration',
+                    'Fieldmap',
+                    'Structural',
+                    'Functional',
+                    'Screenshot',
+                    'Non-Image',
+                    'Spectroscopy' ]
 
     return _find_matches(label, intent_list)
 
 
-def _find_matches(label, list):
+def _find_matches(label, in_list):
     """For a given list find those entries that match a given label."""
 
     matches = []
 
-    for l in list:
+    for l in in_list:
         regex = _compile_regex(l)
         if regex.findall(label):
             matches.append(l)
@@ -69,10 +97,11 @@ def _compile_regex(string):
     # Escape * for T2*
     if string == 'T2*':
         string = 'T2\*'
-        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)|(t2star)" % (string,string,string,string), re.IGNORECASE)
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)|(%s)|(t2star)" % (string, string,string,string,string), re.IGNORECASE)
     # Prevent T2 from capturing T2*
     elif string == 'T2':
-        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s$)|(%s_)" % (string,string,string,string), re.IGNORECASE)
+        string = '(?!T2\*)T2'
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)" % (string,string,string,string), re.IGNORECASE)
     else:
         regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)" % (string,string,string,string), re.IGNORECASE)
     return regex
@@ -291,9 +320,9 @@ def is_post(label):
 
 
 def infer_classification(label):
-    '''
+    """
     Get classification based on acquisition label
-    '''
+    """
     if not label:
         return {}
     else:
@@ -376,9 +405,9 @@ def infer_classification(label):
 
 
 def get_param_classification(dcm, slice_number, unique_iop):
-    '''
+    """
     Get classification based on imaging parameters in DICOM header.
-    '''
+    """
     classification_dict = {}
     log.info('Attempting to deduce classification from imaging prameters...')
     
@@ -483,9 +512,9 @@ def get_classification_from_string(value):
 
 
 def get_custom_classification(label, config_file):
-    '''
+    """
     Get custom (context) based classification.
-    '''
+    """
     if config_file is None or not os.path.isfile(config_file):
         return None
 
@@ -536,7 +565,7 @@ def get_custom_classification(label, config_file):
 
 
 def classify_dicom(dcm, slice_number, unique_iop=''):
-    '''
+    """
     Generate a classification dict from DICOM header info.
 
     Classification logic is as follows:
@@ -545,7 +574,7 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
      3. Attempt to generate a classification based on the imaging params.
 
     When a classification is returned the logic cascade ends.
-    '''
+    """
 
     classification_dict = {}
     series_desc = dicom_processor.format_string(dcm.get('SeriesDescription', ''))
@@ -571,9 +600,9 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
 
 
 def classify_MR(df, dcm, dcm_metadata):
-    '''
+    """
     Classifies a MR dicom series
-    '''
+    """
     
     # Determine how many DICOM files are in directory
     slice_number = len(df)
