@@ -90,6 +90,10 @@ def fix_type_based_on_dicom_vm(header):
         if vr != 'SQ':
             if vm != '1' and not isinstance(val, list):  # anything else is a list
                 header[key] = [val]
+        elif not isinstance(val, list):
+            # To deal with DataElement that pydicom did not read as sequence
+            # (e.g. stored as OB and pydicom parsing them as binary string)
+            exc_keys.append(key)
         else:
             for dataset in val:
                 fix_type_based_on_dicom_vm(dataset)
