@@ -12,6 +12,48 @@ SEQUENCE_ANATOMY = ['Head', 'Neck', 'Chest', 'Abdomen', 'Pelvis', 'Lower Extremi
 
 # Scan Coverage
 def compute_scan_coverage(df):
+    """
+    Returns the scan coverage--the z-direction/axial direction range--of a
+    set of images that are part of a scan.
+    Scan coverage is typically computed for CT and PET GIP/Flywheel metadata.
+    Params
+    ------
+    df: DataFrame
+    A pandas DataFrame where each row is a dicom image header information.
+    Examples/Tests
+    --------------
+    # Returns scan coverage computation by using dicom header info of slices
+    >>> import pandas as pd
+    >>> df = pd.DataFrame(pd.Series({0: [1, 2, 3.2], 1: [1, 2, 3.4]}, name='ImagePositionPatient'))
+    >>> compute_scan_coverage(df)
+    (0.19999999999999973, 3.4, 3.2)
+
+    # Returns 'None' and warns "Some or all 'ImagePositionPatient' values of
+    dicom slices are not length 3"
+    >>> df = pd.DataFrame(pd.Series({0: [1, 2, 3], 1: [1, 2]}, name='ImagePositionPatient'))
+    >>> compute_scan_coverage(df)
+    
+    # Returns 'None' and warns "Some or all 'ImagePositionPatient' values
+    # of dicom slices are missing."
+    >>> df = pd.DataFrame(pd.Series({0: None, 1: [1, 2, 3]}, name='ImagePositionPatient'))
+    >>> compute_scan_coverage(df)
+    
+    # Returns 'None' and warns "Some or all 'ImagePositionPatient' values
+    are not type 'list'"
+    >>> df = pd.DataFrame(pd.Series({0: 'hi', 1: [1, 2, 3]}, name='ImagePositionPatient'))
+    >>> compute_scan_coverage(df)
+    
+    # Returns 'None' and warns "Some or all 'ImagePositionPatient' z-axis
+    values of dicom slices are not type 'float'."
+    >>> df = pd.DataFrame(pd.Series({0: [1, 2, 3.2], 1: [1, 2, '3.5']}, name='ImagePositionPatient'))
+    >>> compute_scan_coverage(df)
+    
+    # Returns 'None' and warns "'ImagePositionPatient' not in dataframe
+    (dicom headers)."
+    >>> df = {}
+    >>> compute_scan_coverage(df)
+    """
+    
     log.info(
         f"Attempting to compute scan coverage..."
     )
@@ -64,7 +106,7 @@ def compute_scan_coverage(df):
     log.info(
         f"Computed scan coverage ({scan_coverage})")
 
-    return scan_coverage
+    return (scan_coverage, z_position.max(), z_position.min())
 
 
 # Utility:  Check a list of regexes for truthyness
@@ -99,6 +141,65 @@ def is_localizer(label):
 
 
 def compute_scan_coverage_if_original(header_dicom, df, info_object):
+
+    """
+    Computes the scan coverage of a scan (e.g., PET or CT) only if the image
+    type is 'ORIGINAL', otherwise returns 'None' and the value of the passed
+    parameter 'info_object'.
+    Parameters
+    ----------
+    header_dicom: dict
+        The dicom header of a dicom image, usually retrieved from dicom
+        metadata 'dcm_metadata' (e.g., dcm_metadata['info']['header'][
+        'dicom']).
+    df: DataFrame
+        A pandas DataFrame where each row is a dicom image header information.
+    info_object: dict
+        The custom information dictionary (i.e., 'info') of a Flywheel/GIP
+        object. This dictionary is stored in the dicom metadata dictionary (
+        e.g., 'dcm_metadata'), along with the 'classification' dictionary.
+    Examples/Tests
+    --------------
+    # Returns computed 'scan_coverage' and updated 'info_object'
+    >>> import pandas as pd
+    >>> info_object = {}
+    >>> df = pd.DataFrame(pd.Series({0: [1, 2, 3.2], 1: [1, 2, 3.4]},
+    ...     name='ImagePositionPatient'))
+    >>> header_dicom = {'ImageType': ['ORIGINAL']}
+    >>> compute_scan_coverage_if_original(header_dicom, df, info_object)
+    (0.19999999999999973, {'ScanCoverage': 0.19999999999999973, 'MaxSliceLocation': 3.4, 'MinSliceLocation': 3.2})
+    
+    # Returns 'None' for 'scan_coverage' and the value of the passed
+    'info_object', and it throws "Dicom header not 'ORIGINAL' or 'DERIVED'"
+    warning
+    >>> header_dicom = {'ImageType': ['Not_Orig_Der']}
+    >>> compute_scan_coverage_if_original(header_dicom, df, info_object)
+    (None, {'ScanCoverage': 0.19999999999999973, 'MaxSliceLocation': 3.4, 'MinSliceLocation': 3.2})
+    
+    # Returns 'None' for 'scan_coverage' and the value of the passed
+    'info_object', and it throws "Could not find 'ImageType' in dicom header"
+    warning
+    >>> header_dicom = {'NoImageType': []}
+    >>> compute_scan_coverage_if_original(header_dicom, df, info_object)
+    (None, {'ScanCoverage': 0.19999999999999973, 'MaxSliceLocation': 3.4, 'MinSliceLocation': 3.2})
+    
+    # Raises 'TypeError', since 'ImageType' value in header_dicom should be
+    # a list.
+    >>> header_dicom = {"ImageType": 'ORIGINAL'}
+    >>> compute_scan_coverage_if_original(header_dicom, df, info_object)
+    Traceback (most recent call last):
+        ...
+    TypeError: Cannot determine if scan coverage should be computed. Dicom header 'ImageType' is not a list, type is <class 'str'>). Try re-running latest GRP-3 metadata import and validation gear.
+    
+    # Returns 'None' for 'scan_coverage' and the value of the passed
+    'info_object', and it logs the info "Cannot compute scan coverage.
+    'ImageType' is 'DERIVED'".
+    >>> header_dicom = {"ImageType": ['DERIVED']}
+    >>> compute_scan_coverage_if_original(header_dicom, df, info_object)
+    (None, {'ScanCoverage': 0.19999999999999973, 'MaxSliceLocation': 3.4, 'MinSliceLocation': 3.2})
+    
+    """
+
     log.info(
         f"Checking if header 'ImageType' == 'ORIGINAL' to determine if scan "
         f"coverage should be computed..."
@@ -148,10 +249,15 @@ def compute_scan_coverage_if_original(header_dicom, df, info_object):
         return None, info_object
 
     # Compute if all checks are passed
-    scan_coverage = compute_scan_coverage(df)
+    (scan_coverage, max_slice_location, min_slice_location) = compute_scan_coverage(df)
 
     if scan_coverage:
         info_object['ScanCoverage'] = scan_coverage
+    if max_slice_location:
+        info_object['MaxSliceLocation'] = max_slice_location
+    if min_slice_location:
+        info_object['MinSliceLocation'] = min_slice_location
+
 
     return scan_coverage, info_object
 
