@@ -4,7 +4,7 @@ from pydicom.data import get_testdata_files
 import pydicom
 
 from MR_classifier import classify_MR, _find_matches, intent_check, \
-    measurement_check, feature_check
+    measurement_check, feature_check, iop_is_unique
 
 
 def test_classify_on_a_sample_MR():
@@ -63,3 +63,16 @@ def test_feature_check():
     assert len(feature_check('NotAFeature')) == 0
     assert feature_check('2D') == ['2D']
     assert feature_check('2D-AAscout') == ['2D', 'AAscout']
+
+
+def test_iop_is_unique():
+    # test all values arrays with distinct values
+    assert iop_is_unique(pd.Series([[x]*6 for x in range(5)]))
+    # test with a non-array value when array items are still unique
+    assert iop_is_unique(pd.Series([[x]*6 for x in range(5)] + [None]))
+    # test repeat value
+    assert not iop_is_unique(pd.Series([[0]*6 for _ in range(5)]))
+    # test single value
+    assert not iop_is_unique(pd.Series([[0]*6]))
+    # test empty series
+    assert not iop_is_unique(pd.Series(dtype="object"))

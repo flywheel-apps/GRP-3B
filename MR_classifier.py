@@ -598,6 +598,27 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
     return classification_dict
 
 
+def convert_list_val_to_tuple(val):
+    """Convert lists to tuples, otherwise return val"""
+    return_val = val
+    if isinstance(val, list):
+        return_val = tuple([convert_list_val_to_tuple(x) for x in val])
+    return return_val
+
+
+def iop_is_unique(iop_series):
+    """Determines whether valid ImageOrientationPatient values within the Series are unique"""
+    is_unique = False
+    # remove non-array values (ImageOrientationPatient should be 6 decimal strings)
+    list_value_list = [x for x in iop_series.values if isinstance(x, list)]
+    # convert values to tuples for hashing
+    tuple_value_list = [convert_list_val_to_tuple(x) for x in list_value_list]
+    # make sure we're not considering a single list to be a localizer
+    if len(tuple_value_list) > 1:
+        if len(tuple_value_list) == len(set(tuple_value_list)):
+            is_unique = True
+    return is_unique
+
 
 def classify_MR(df, dcm, dcm_metadata):
     """
@@ -607,18 +628,11 @@ def classify_MR(df, dcm, dcm_metadata):
     # Determine how many DICOM files are in directory
     slice_number = len(df)
 
-    # Determine whether ImageOrientationPatient is constant
-    if hasattr(df, 'ImageOrientationPatient'):
-        if df.ImageOrientationPatient.isna().any():
-            uniqueiop = []
-        else:
-            if isinstance(df.ImageOrientationPatient[0], list):
-                # list are no hashable and is_unique raises
-                uniqueiop = df.ImageOrientationPatient.apply(lambda x: tuple(x)).is_unique
-            else:
-                uniqueiop = df.ImageOrientationPatient.is_unique
+    # Determine whether ImageOrientationPatient is unique for each image represented in the df
+    if hasattr(df, 'ImageOrientationPatient') and len(df) > 1:
+        uniqueiop = iop_is_unique(df.ImageOrientationPatient)
     else:
-        uniqueiop = []
+        uniqueiop = False
     # Classification (# Only set classification if the modality is MR)
     if dcm_metadata['modality'] == 'MR':
         log.info("Determining MR Classification...")
