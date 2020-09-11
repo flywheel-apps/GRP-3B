@@ -14,7 +14,7 @@ def test_classify_PT():
                         'RadiopharmaceuticalCodeSequence': [{'CodeValue': 'C-B1031'}]
                     }]
         }}}}
-    ipp = [[0, 0, a] for a in range(100)]
+    ipp = [[0, 0, float(a)] for a in range(100)]
     df = pd.DataFrame({'ImagePositionPatient': ipp})
     acquisition = flywheel.Acquisition(label='Neck')
     res = classify_PT(df, dcm_metadata, acquisition)
