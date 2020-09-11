@@ -63,6 +63,7 @@ def is_OCT_OPT(description):
 # For EyeKore
 # Determine Procedure Name
 def getProtocolName(single_header_object):
+    protocolName = None
     if 'ProtocolName' in single_header_object.keys():
             protocolName = single_header_object['ProtocolName']
     return protocolName
@@ -120,7 +121,7 @@ def getProtocolName(single_header_object):
 
 ######################################################################################
 ######################################################################################
-def classify_OPHTHA(dcm_metadata, acquisition, dicom_filepath):
+def classify_OPHTHA(dcm_metadata, acquisition):
     """
     Classifies a OCT dicom series
     Args:
@@ -133,7 +134,11 @@ def classify_OPHTHA(dcm_metadata, acquisition, dicom_filepath):
     log.info("Determining OPHTHA Classification...")
     single_header_object = dcm_metadata['info']['header']['dicom']
     updateFlag = False
+    protocolName = None
     octType = None
+    subType = None
+    modality = None
+    modalityType = None
 
     if 'Columns' in single_header_object.keys():
         updateFlag = True
@@ -156,7 +161,6 @@ def classify_OPHTHA(dcm_metadata, acquisition, dicom_filepath):
         protocolName = getProtocolName(single_header_object)
 
         # Get Modality
-        modality = None
         if protocolName:
             if protocolName == 'FA':
                 modality = 'FP'
@@ -215,7 +219,13 @@ def classify_OPHTHA(dcm_metadata, acquisition, dicom_filepath):
             modalityType = 'Color'
 
         if modality:
-            updateFlag = True  
+            updateFlag = True 
+            if modalityType:
+                classifications['Type']=[modalityType]
+            if subType:
+                classifications['Sub-Type'] = [subType]
+ 
+
         
         # Get Laterality
         laterality = None
@@ -247,10 +257,12 @@ def classify_OPHTHA(dcm_metadata, acquisition, dicom_filepath):
                 octType = ['Standard']
                 # print("Found match for Standard OCT from is_OCT_OPT match")
         
-        if octType:
+        if modality == 'OCT' and octType:
             classifications.update({"OCT Type": octType})
+
         if classifications:
             dcm_metadata['classification'] = classifications
+
         if modality:
             dcm_metadata['modality'] = modality
             dcm_metadata['type'] = modalityType
