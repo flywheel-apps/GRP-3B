@@ -6,9 +6,31 @@ log = logging.getLogger(__name__)
 
 # Laterality, Left
 def is_left(description):
+    """
+    # return false
+    >>> is_left('some string')
+    False
+    
+    # returns true
+    >>> is_left('left')
+    True
+
+    >>> is_left('abc_le_123.jpg')
+    True
+
+    >>> is_left('abc_OS_123.jpg')
+    True
+
+    >>> is_left('abc_OD_123.jpg')
+    False
+
+    """
+
     regexes = [
         re.compile('(^|[^a-zA-Z])(L|LE)([^a-zA-Z]|$)', re.IGNORECASE),
         # L or LE not surrounded by any other letters
+        re.compile('(^|[^a-zA-Z])(OS)([^a-zA-Z]|$)', re.IGNORECASE),
+        # OS not surrounded by any other letters
         re.compile('LEFT', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
@@ -23,13 +45,22 @@ def is_right(description):
     # returns true
     >>> is_right('right')
     True
+
     >>> is_right('abc_re_123.jpg')
     True
+
+    >>> is_right('abc_OD_123.jpg')
+    True
+
+    >>> is_right('abc_OS_123.jpg')
+    False
 
     """
     regexes = [
         re.compile('(^|[^a-zA-Z])(R|RE)([^a-zA-Z]|$)', re.IGNORECASE),
         # R or RE not surrounded by any other letters
+        re.compile('(^|[^a-zA-Z])(OD)([^a-zA-Z]|$)', re.IGNORECASE),
+        # OD not surrounded by any other letters
         re.compile('RIGHT', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
@@ -68,6 +99,7 @@ def getProtocolName(single_header_object):
             protocolName = single_header_object['ProtocolName']
     return protocolName
 
+# The commented blocks below are for Future development
 # def is_FA(dicom_filepath):
 #     regexes = [
 #         #for Eyecor - has with /FA/ in the path
@@ -116,8 +148,7 @@ def getProtocolName(single_header_object):
 #     elif is_ICG:
 #         modality = ['FP']
 #         modalityType = ['Indocyanine Green']
-
-#     return modality    
+#     return modality, modalityType    
 
 ######################################################################################
 ######################################################################################
@@ -229,9 +260,9 @@ def classify_OPHTHA(dcm_metadata, acquisition):
         
         # Get Laterality
         laterality = None
-        if single_header_object.get('ImageLaterality') == 'R':
+        if single_header_object.get('ImageLaterality') in ('R','OD'):
             laterality = ['Right Eye']
-        elif single_header_object.get('ImageLaterality') == 'L':
+        elif single_header_object.get('ImageLaterality') in ('L','OS'):
             laterality = ['Left Eye']
         elif is_right(acquisition.label):
             laterality = ['Right Eye']
@@ -243,7 +274,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
             # classifications.update({"Laterality": laterality}) update later using Dictionary
         
         # Get OCT Type
-        if octType == None:
+        if octType is None:
             if device_code_sequence and device_code_sequence == 'A-00FBE':
                 octType = ['Standard']
                 # print("Found match for Standard OCT from AcquisitionDeviceTypeCodeSequence match")
