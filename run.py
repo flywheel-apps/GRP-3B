@@ -73,7 +73,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if modality == "MR":
-        dicom_metadata = MR_classifier.classify_MR(df, dcm, dicom_metadata) 
+        dicom_metadata = MR_classifier.classify_MR(df, dicom_metadata, acquisition) 
     elif modality == 'CT':
         dicom_metadata = CT_classifier.classify_CT(df, dicom_metadata, acquisition)
     elif modality == 'PT':

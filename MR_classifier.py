@@ -94,13 +94,16 @@ def _find_matches(label, in_list):
 
 def _compile_regex(string):
     """Generate the regex for label checking"""
-    # Escape * for T2*
+    # Escape * for T2* and T2+
     if string == 'T2*':
         string = 'T2\*'
         regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)|(%s)|(t2star)" % (string, string,string,string,string), re.IGNORECASE)
-    # Prevent T2 from capturing T2*
+    elif string == 'T2+':
+        string = 'T2\+'
+        regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)|(%s)|(t2star)" % (string, string,string,string,string), re.IGNORECASE)
+    # Prevent T2 from capturing T2* and T2+
     elif string == 'T2':
-        string = '(?!T2\*)T2'
+        string = '(?!(T2\*|T2\+))T2'
         regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)" % (string,string,string,string), re.IGNORECASE)
     else:
         regex = re.compile(r"(\b%s\b)|(_%s_)|(_%s)|(%s_)" % (string,string,string,string), re.IGNORECASE)
@@ -126,6 +129,15 @@ def is_anatomy_t1(label):
 def is_anatomy_t2(label):
     regexes = [
         re.compile('t2', re.IGNORECASE)
+    ]
+    return common_utils.regex_search_label(regexes, label)
+
+# Anatomy, T2*
+def is_anatomy_t2star(label):
+    regexes = [
+        re.compile('t2star', re.IGNORECASE),
+        re.compile('t2\*', re.IGNORECASE),
+        re.compile('t2\+', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, label)
 
@@ -157,13 +169,27 @@ def is_diffusion(label):
     return common_utils.regex_search_label(regexes, label)
 
 # Diffusion - Derived
+# Not sure why these originally were forced to be at the end of the line; removed by Maj Hedehus
 def is_diffusion_derived(label):
     regexes = [
-        re.compile('_ADC$', re.IGNORECASE),
-        re.compile('_TRACEW$', re.IGNORECASE),
-        re.compile('_ColFA$', re.IGNORECASE),
-        re.compile('_FA$', re.IGNORECASE),
+        #re.compile('_ADC$', re.IGNORECASE),
+        #re.compile('_TRACEW$', re.IGNORECASE),
+        #re.compile('_ColFA$', re.IGNORECASE),
+        #re.compile('_FA$', re.IGNORECASE),
+
+        re.compile('_ADC', re.IGNORECASE),
+        re.compile('_TRACE', re.IGNORECASE),
+        re.compile('_ColFA', re.IGNORECASE),
+        re.compile('_FA_', re.IGNORECASE),
         re.compile('_EXP$', re.IGNORECASE)
+        ]
+    return common_utils.regex_search_label(regexes, label)
+
+# Susceptibility Weighted
+def is_swi(label):
+    regexes = [
+        re.compile('swi', re.IGNORECASE),
+        re.compile('susceptibility', re.IGNORECASE),
         ]
     return common_utils.regex_search_label(regexes, label)
 
@@ -307,7 +333,7 @@ def is_spectroscopy(label):
         ]
     return common_utils.regex_search_label(regexes, label)
 
-# Post in Series Description
+# Post in Series Description - only used in parameter classification
 def is_post(label):
     found = False
     if type(label) == str:
@@ -317,6 +343,18 @@ def is_post(label):
         if any(is_post(item) for item in label):
             found = True
     return found
+
+
+def is_contrast(label):
+    regexes = [
+        re.compile('post', re.IGNORECASE),
+        re.compile('\+C', re.IGNORECASE),
+        re.compile('C\+', re.IGNORECASE),
+        re.compile('contrast', re.IGNORECASE),
+        re.compile('enhancement', re.IGNORECASE)
+        #re.compile('gad', re.IGNORECASE) #probably not unique enough, leave out for now
+        ]
+    return common_utils.regex_search_label(regexes, label)
 
 
 def infer_classification(label):
@@ -350,11 +388,17 @@ def infer_classification(label):
         elif is_anatomy_t1(label):
             classification['Intent'] = ['Structural']
             classification['Measurement'] = ['T1']
+        elif is_anatomy_t2star(label):
+            classification['Intent'] = ['Structural']
+            classification['Measurement'] = ['T2*']
         elif is_anatomy_t2(label):
             classification['Intent'] = ['Structural']
             classification['Measurement'] = ['T2']
         elif is_anatomy(label):
             classification['Intent'] = ['Structural']
+        elif is_swi(label) :
+            classification['Intent'] = ['Structural']
+            classification['Measurement'] = ['Susceptibility']
         elif common_utils.is_localizer(label):
             classification['Intent'] = ['Localizer']
             classification['Measurement'] = ['T2']
@@ -378,6 +422,14 @@ def infer_classification(label):
             classification['Intent'] = ['Screenshot']
         else:
             print(label.strip('\n') + ' --->>>> unknown')
+            
+
+		# Add Contrast-agent
+        if is_contrast(label):
+            class_features = classification.get('Features', [])
+            class_features.append('Contrast-Agent')
+            classification['Features'] = class_features
+        	
 
         # Add features to classification
         features = feature_check(label)
@@ -399,7 +451,7 @@ def infer_classification(label):
             class_intent = classification.get('Intent', [])
             [class_intent.append(x) for x in intents if x not in class_intent]
             classification['Intent'] = class_intent
-
+    
     return classification
 
 
@@ -457,10 +509,15 @@ def get_param_classification(dcm, slice_number, unique_iop):
         log.info('(te and te  < 50) and (tr and tr > 1000) -- PD Measurement')
 
 
-    if is_post(sd):
-        classification_dict['Custom'] = ['Contrast']
-        log.info('POST found in Series Description -- Adding Contrast to custom classification')
-        
+#    if is_post(sd):
+#        classification_dict['Custom'] = ['Contrast']
+#        log.info('POST found in Series Description -- Adding Contrast to custom classification')
+
+    if is_contrast(sd):
+        class_features = classification.get('Features', [])
+        class_features.append('Contrast-Agent')
+        classification['Features'] = class_features
+       
 
     if slice_number and slice_number < 10:
         classification_dict['Intent'] = ['Localizer']
@@ -564,7 +621,7 @@ def get_custom_classification(label, config_file):
 
 
 
-def classify_dicom(dcm, slice_number, unique_iop=''):
+def classify_dicom(dcm_metadata, acquisition, slice_number, unique_iop=''):
     """
     Generate a classification dict from DICOM header info.
 
@@ -576,8 +633,17 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
     When a classification is returned the logic cascade ends.
     """
 
+    header_dicom = dcm_metadata['info']['header']['dicom']
+
     classification_dict = {}
-    series_desc = dicom_processor.format_string(dcm.get('SeriesDescription', ''))
+    series_desc = header_dicom.get('SeriesDescription') or ''
+
+    log.info('Acquisition label: %s',acquisition.label.replace('.dicom.zip',''))
+    if series_desc :
+        log.info('SeriesDescription: %s', series_desc)
+    else :
+        log.info('SeriesDescription is blank')
+	
 
     # 1. Custom classification from context
     if series_desc:
@@ -585,15 +651,21 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
         if classification_dict:
             log.info('Custom classification from config: %s', classification_dict)
 
-    # 2. Classification from SeriesDescription
+    # 2. Classification from Acquisition Label
+    if not classification_dict :
+    	classification_dict = infer_classification(acquisition.label.replace('.dicom.zip',''))
+    if classification_dict:
+        log.info('Inferred classification from label: %s', classification_dict)
+
+    # 3. Classification from SeriesDescription
     if not classification_dict and series_desc:
         classification_dict = infer_classification(series_desc)
         if classification_dict:
             log.info('Inferred classification from label: %s', classification_dict)
 
-    # 3. Classification from Imaging params
+    # 4. Classification from Imaging params
     if not classification_dict:
-        classification_dict = get_param_classification(dcm, slice_number, unique_iop)
+        classification_dict = get_param_classification(header_dicom, slice_number, unique_iop)
 
     return classification_dict
 
@@ -620,7 +692,7 @@ def iop_is_unique(iop_series):
     return is_unique
 
 
-def classify_MR(df, dcm, dcm_metadata):
+def classify_MR(df, dcm_metadata, acquisition):
     """
     Classifies a MR dicom series
     """
@@ -634,9 +706,9 @@ def classify_MR(df, dcm, dcm_metadata):
     else:
         uniqueiop = False
     # Classification (# Only set classification if the modality is MR)
-    if dcm_metadata['modality'] == 'MR':
+    if True: #dcm_metadata['modality'] == 'MR':
         log.info("Determining MR Classification...")
-        classification = classify_dicom(dcm, slice_number, uniqueiop)
+        classification = classify_dicom(dcm_metadata, acquisition, slice_number, uniqueiop)
         
         if classification:
             dcm_metadata['classification'] = classification
