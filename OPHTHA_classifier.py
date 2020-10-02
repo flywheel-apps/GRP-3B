@@ -80,7 +80,7 @@ def is_OCT_OP(description):
         # match ...OP, but not ...OPT
         re.compile('SD.*OCT.*OP(?!T)', re.IGNORECASE),
         #for Eyecor - Start with OP_
-        re.compile('^OP_', re.IGNORECASE)       
+        re.compile('^OP_', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
@@ -182,6 +182,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
     modalityType = None
     protocolNameMessage = None
 
+
     if 'Columns' in single_header_object.keys():
         updateFlag = True
     elif is_OCT(acquisition.label):
@@ -206,6 +207,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
         if protocolName:
             protocolNameMessage = "Got protocolName:" + protocolName
             log.debug(protocolNameMessage)
+
             if protocolName == 'FA':
                 modality = 'FP'
                 modalityType = 'Fluorescein Angiography'
@@ -232,11 +234,11 @@ def classify_OPHTHA(dcm_metadata, acquisition):
                     subType = 'Standard'  
                 elif protocolName in ['FP-4W']: 
                     subType = 'Wide Field' 
+
             elif protocolName == 'ICG':
                 modality = 'FP'
                 modalityType = 'Indocyanine Green'
             elif protocolName == 'OCT Angiography':
-                log.debug("Inside logic for OCT-A")
                 modality = 'OCT'
                 octType = ['Angiography']
             elif protocolName == 'SD-OCT':
@@ -258,6 +260,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
                 modality = 'OCT'
                 octType = ['Standard'] 
                 # octSubType = 'Wide Field'
+
         elif device_code_sequence and device_code_sequence == 'A-00FBE':
             modality = 'OCT'
         elif device_code_sequence and study_description and study_description == 'CF':
@@ -328,6 +331,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
 
     log.debug("Sending dcm_metadata to run module:")
     log.debug(dcm_metadata)    
+
     return dcm_metadata
 
 ## Perform test if run directly
