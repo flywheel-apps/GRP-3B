@@ -287,8 +287,13 @@ class TracerPTSubClassifier(PTSubClassifier):
         if isotope and not classification['Isotope']:
             classification['Isotope'].append(isotope)
 
+        # check radiopharmaceutical locations, since it could vary by
+        # manufacturer
         radiopharma = self.get_dicom_tag(
             'RadiopharmaceuticalInformationSequence.0.RadionuclideCodeSequence.0.Radiopharmaceutical')
+        if radiopharma is None:
+            radiopharma = self.get_dicom_tag(
+                'RadiopharmaceuticalInformationSequence.0.Radiopharmaceutical')
 
         if radiopharma and radiopharma.lower() in lc_kw:
             tracer = lc_kw[code_meaning_tracer.lower()]
