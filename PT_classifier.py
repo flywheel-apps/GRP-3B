@@ -58,7 +58,9 @@ TRACER_MEANINGS = {
     'Pittsburgh compound B C^11^': 'PiB',
     # then values found for Radiopharmaceutical
     #not sure if this can work, Radiopharmaceutical may be free-form text ?
-    'FDG -- fluorodeoxyglucose': 'FDG'
+    'FDG -- fluorodeoxyglucose': 'FDG',
+    'Fluorodeoxyglucose': 'FDG',
+    'HMDP': 'HMDP',
 }
 
 TRACER_TO_ISOTOPE = { # For some tracers, the tracer dictates the isotope
@@ -74,10 +76,12 @@ TRACER_TO_ISOTOPE = { # For some tracers, the tracer dictates the isotope
 ISOTOPE_CODES = {
     'C-111A1': 'F18',
     'C-105A1': 'C11',
-    'C-168A4': 'Zr89'
+    'C-168A4': 'Zr89',
+    'C-163A8': 'T99m'
 }
 ISOTOPE_MEANINGS = {
-    '^18^Fluorine': 'F18'
+    '^18^Fluorine': 'F18',
+    '99m Technetium': 'T99m'
 }
 
 
