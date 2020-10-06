@@ -34,7 +34,7 @@ def update_metadata(dcm_metadata, dicom_name, modality):
              "name": dicom_name,
              "info": dcm_metadata['info']}
         ]
-    elif modality == 'OPT' or modality == 'OP':
+    elif modality == 'OPT' or modality == 'OP' or modality == 'OT':
         output_metadata['acquisition']['files'] = [
             {"classification": dcm_metadata['classification'],
              "modality": dcm_metadata['modality'],
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         dicom_metadata = CT_classifier.classify_CT(df, dicom_metadata, acquisition)
     elif modality == 'PT':
         dicom_metadata = PT_classifier.classify_PT(df, dicom_metadata, acquisition)
-    elif modality == 'OPT' or modality == 'OP':
+    elif modality == 'OPT' or modality == 'OP' or modality == 'OT':
         dicom_metadata = OPHTHA_classifier.classify_OPHTHA(dicom_metadata, acquisition)
 
     output_metadata = update_metadata(dicom_metadata, dicom_name, modality)

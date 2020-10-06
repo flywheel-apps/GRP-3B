@@ -69,8 +69,8 @@ def is_right(description):
 def is_OCT(description):
     regexes = [
         re.compile('OCT', re.IGNORECASE),
-        #for Eyecor - Start with OP_ or OPT_
-        re.compile('^OPT?_', re.IGNORECASE)
+        #for Eyecor - Start with OP_ or OPT_ or OT_
+        re.compile('^OP?T?_', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
@@ -78,7 +78,9 @@ def is_OCT(description):
 def is_OCT_OP(description):
     regexes = [
         # match ...OP, but not ...OPT
-        re.compile('SD.*OCT.*OP(?!T)', re.IGNORECASE)       
+        re.compile('SD.*OCT.*OP(?!T)', re.IGNORECASE),
+        #for Eyecor - Start with OP_
+        re.compile('^OP_', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
 
@@ -90,6 +92,14 @@ def is_OCT_OPT(description):
         re.compile('^OPT_', re.IGNORECASE)
     ]
     return common_utils.regex_search_label(regexes, description)
+
+# # Modality, OCT-OT
+# def is_OCT_OT(description):
+#     regexes = [
+#         #for Eyecor - Start with OT_
+#         re.compile('^OT_', re.IGNORECASE)
+#     ]
+#     return common_utils.regex_search_label(regexes, description)
 
 # For EyeKore
 # Determine Procedure Name
@@ -170,6 +180,8 @@ def classify_OPHTHA(dcm_metadata, acquisition):
     subType = None
     modality = None
     modalityType = None
+    protocolNameMessage = None
+
 
     if 'Columns' in single_header_object.keys():
         updateFlag = True
@@ -193,6 +205,9 @@ def classify_OPHTHA(dcm_metadata, acquisition):
 
         # Get Modality
         if protocolName:
+            protocolNameMessage = "Got protocolName:" + protocolName
+            log.debug(protocolNameMessage)
+
             if protocolName == 'FA':
                 modality = 'FP'
                 modalityType = 'Fluorescein Angiography'
@@ -212,9 +227,13 @@ def classify_OPHTHA(dcm_metadata, acquisition):
                 modality = 'FP'
                 modalityType = 'Autofluorescence'
             elif protocolName in ['FP','FP-2','FP-3M','FP-4W','FP-7M','FP-7Std','FP-9','FP-ROP']:
-                modality == 'FP'
-                modalityType == 'Color'
-                subType = 'Standard'  
+                log.debug("Inside logic for ColorFundus using IN [FP, FP-2, and so on]")
+                modality = 'FP'
+                modalityType = 'Color' 
+                if protocolName == 'FP-4W': 
+                    subType = 'Wide Field' 
+                else:
+                    subType = 'Standard'    
             elif protocolName == 'ICG':
                 modality = 'FP'
                 modalityType = 'Indocyanine Green'
@@ -239,31 +258,33 @@ def classify_OPHTHA(dcm_metadata, acquisition):
             elif protocolName == 'Widefield OCT':
                 modality = 'OCT'
                 octType = ['Standard'] 
-                octSubType = 'Wide Field'
+                # octSubType = 'Wide Field'
+
         elif device_code_sequence and device_code_sequence == 'A-00FBE':
             modality = 'OCT'
-        elif is_OCT(acquisition.label):
-            modality = 'OCT'
-            updateFlag = True
         elif device_code_sequence and study_description and study_description == 'CF':
             modality = 'FP'
             modalityType = 'Color'
+        elif is_OCT(acquisition.label):
+            modality = 'OCT'
+            # updateFlag = True
 
         if modality:
+            log.debug('In Modality... Got:')
+            log.debug(modality)
             updateFlag = True 
             if modalityType:
                 classifications['Type']=[modalityType]
             if subType:
                 classifications['Sub-Type'] = [subType]
- 
-
-        
+  
         # Get Laterality
         laterality = None
-        if single_header_object.get('ImageLaterality') in ('R','OD'):
-            laterality = ['Right Eye']
-        elif single_header_object.get('ImageLaterality') in ('L','OS'):
-            laterality = ['Left Eye']
+        if single_header_object.get('ImageLaterality'):
+            if single_header_object.get('ImageLaterality') in ('R','OD'):
+                laterality = ['Right Eye']
+            elif single_header_object.get('ImageLaterality') in ('L','OS'):
+                laterality = ['Left Eye']
         elif is_right(acquisition.label):
             laterality = ['Right Eye']
         elif is_left(acquisition.label):
@@ -277,16 +298,16 @@ def classify_OPHTHA(dcm_metadata, acquisition):
         if octType is None:
             if device_code_sequence and device_code_sequence == 'A-00FBE':
                 octType = ['Standard']
-                # print("Found match for Standard OCT from AcquisitionDeviceTypeCodeSequence match")
+                log.debug("Found match for Standard OCT from AcquisitionDeviceTypeCodeSequence match")
             elif device_code_sequence and device_code_sequence == 'A-00E8A':
                 octType = ['Fundus']
-                # print("Found match for Fundus OCT from AcquisitionDeviceTypeCodeSequence match")
+                log.debug("Found match for Fundus OCT from AcquisitionDeviceTypeCodeSequence match")
             elif is_OCT_OP(acquisition.label):
                 octType = ['Fundus']
-                # print("Found match for Fundus OCT from is_OCT_OP match")
+                log.debug("Found match for Fundus OCT from is_OCT_OP match")
             elif is_OCT_OPT(acquisition.label):
                 octType = ['Standard']
-                # print("Found match for Standard OCT from is_OCT_OPT match")
+                log.debug("Found match for Standard OCT from is_OCT_OPT match")
         
         if modality == 'OCT' and octType:
             classifications.update({"OCT Type": octType})
@@ -299,9 +320,17 @@ def classify_OPHTHA(dcm_metadata, acquisition):
             dcm_metadata['type'] = modalityType
             if subType:
                 dcm_metadata['Sub-Type'] = [subType]
-
+            log.debug("In Modality last block -> have dcm_metadata:")
+            log.debug(dcm_metadata)  
+        else:
+            log.debug("missing modality last block")      
     else:
+        log.debug("Updtate Flag is false... Not processing this file")
         pass
+
+    log.debug("Sending dcm_metadata to run module:")
+    log.debug(dcm_metadata)    
+
     return dcm_metadata
 
 ## Perform test if run directly
