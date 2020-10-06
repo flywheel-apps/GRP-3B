@@ -229,12 +229,11 @@ def classify_OPHTHA(dcm_metadata, acquisition):
             elif protocolName in ['FP','FP-2','FP-3M','FP-4W','FP-7M','FP-7Std','FP-9','FP-ROP']:
                 log.debug("Inside logic for ColorFundus using IN [FP, FP-2, and so on]")
                 modality = 'FP'
-                modalityType = 'Color'
-                if protocolName in ['FP-7Std']:
-                    subType = 'Standard'  
-                elif protocolName in ['FP-4W']: 
+                modalityType = 'Color' 
+                if protocolName in ['FP-4W']: 
                     subType = 'Wide Field' 
-
+                else:
+                    subType = 'Standard'    
             elif protocolName == 'ICG':
                 modality = 'FP'
                 modalityType = 'Indocyanine Green'
