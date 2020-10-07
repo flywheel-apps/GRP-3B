@@ -259,7 +259,7 @@ class TracerPTSubClassifier(PTSubClassifier):
 
         if code_value_tracer in TRACER_CODES:
             tracer = TRACER_CODES[code_value_tracer]
-            isotope = TRACER_TO_ISOTOPE[tracer]
+            isotope = TRACER_TO_ISOTOPE.get(tracer)
 
         self.warn_if_isotope_different_from_previously_found(
             isotope=isotope, classification=classification)
@@ -281,7 +281,7 @@ class TracerPTSubClassifier(PTSubClassifier):
 
         if code_meaning_tracer and code_meaning_tracer.lower() in lc_kw:
             tracer = lc_kw[code_meaning_tracer.lower()]
-            isotope = TRACER_TO_ISOTOPE[tracer]
+            isotope = TRACER_TO_ISOTOPE.get(tracer)
 
         self.warn_if_isotope_different_from_previously_found(
             isotope=isotope, classification=classification)
@@ -300,8 +300,8 @@ class TracerPTSubClassifier(PTSubClassifier):
                 'RadiopharmaceuticalInformationSequence.0.Radiopharmaceutical')
 
         if radiopharma and radiopharma.lower() in lc_kw:
-            tracer = lc_kw[code_meaning_tracer.lower()]
-            isotope = TRACER_TO_ISOTOPE[tracer]
+            tracer = lc_kw[radiopharma.lower()]
+            isotope = TRACER_TO_ISOTOPE.get(tracer)
 
         self.warn_if_isotope_different_from_previously_found(
             isotope=isotope, classification=classification)
