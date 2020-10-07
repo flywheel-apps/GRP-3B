@@ -300,7 +300,7 @@ class TracerPTSubClassifier(PTSubClassifier):
                 'RadiopharmaceuticalInformationSequence.0.Radiopharmaceutical')
 
         if radiopharma and radiopharma.lower() in lc_kw:
-            tracer = lc_kw[code_meaning_tracer.lower()]
+            tracer = lc_kw[radiopharma.lower()]
             isotope = TRACER_TO_ISOTOPE[tracer]
 
         self.warn_if_isotope_different_from_previously_found(
