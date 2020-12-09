@@ -282,13 +282,13 @@ def classify_OPHTHA(dcm_metadata, acquisition):
         laterality = None
         if single_header_object.get('ImageLaterality'):
             if single_header_object.get('ImageLaterality') in ('R','OD'):
-                laterality = ['Right Eye']
+                laterality = ['RIGHT']
             elif single_header_object.get('ImageLaterality') in ('L','OS'):
-                laterality = ['Left Eye']
+                laterality = ['LEFT']
         elif is_right(acquisition.label):
-            laterality = ['Right Eye']
+            laterality = ['RIGHT']
         elif is_left(acquisition.label):
-            laterality = ['Left Eye']
+            laterality = ['LEFT']
         
         if laterality:  # set classification laterality
             classifications['Laterality'] = laterality
