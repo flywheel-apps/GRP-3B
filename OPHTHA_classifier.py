@@ -288,7 +288,7 @@ def classify_OPHTHA(dcm_metadata, acquisition):
         elif is_right(acquisition.label):
             laterality = ['RIGHT']
         elif is_left(acquisition.label):
-            laterality = ['LIGHT']
+            laterality = ['LEFT']
         
         if laterality:  # set classification laterality
             classifications['Laterality'] = laterality
