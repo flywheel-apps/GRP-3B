@@ -574,8 +574,7 @@ def get_custom_classification(label, config_file):
     return None
 
 
-
-def classify_dicom(dcm, slice_number, unique_iop=''):
+def classify_dicom(dcm, slice_number, acquisition_label, unique_iop=None):
     """
     Generate a classification dict from DICOM header info.
 
@@ -591,14 +590,19 @@ def classify_dicom(dcm, slice_number, unique_iop=''):
     series_desc = dicom_processor.format_string(dcm.get('SeriesDescription', ''))
 
     # 1. Custom classification from context
-    if series_desc:
-        classification_dict = get_custom_classification(series_desc, '/flywheel/v0/config.json')
+    if acquisition_label or series_desc:  # acquisition_label gets precedence
+        classification_dict = get_custom_classification(acquisition_label, '/flywheel/v0/config.json')
+        if not classification_dict and series_desc:
+            classification_dict = get_custom_classification(series_desc, '/flywheel/v0/config.json')
         if classification_dict:
             log.info('Custom classification from config: %s', classification_dict)
 
-    # 2. Classification from SeriesDescription
-    if not classification_dict and series_desc:
-        classification_dict = infer_classification(series_desc)
+    # 2. Classification from SeriesDescription or acquisition_label
+    if not classification_dict and (series_desc or acquisition_label):
+        if acquisition_label:
+            classification_dict = infer_classification(acquisition_label)
+        if not classification_dict and series_desc:
+            classification_dict = infer_classification(series_desc)
         if classification_dict:
             log.info('Inferred classification from label: %s', classification_dict)
 
@@ -631,7 +635,7 @@ def iop_is_unique(iop_series):
     return is_unique
 
 
-def classify_MR(df, dcm, dcm_metadata):
+def classify_MR(df, dcm, dcm_metadata, acquisition):
     """
     Classifies a MR dicom series
     """
@@ -647,7 +651,7 @@ def classify_MR(df, dcm, dcm_metadata):
     # Classification (# Only set classification if the modality is MR)
     if dcm_metadata['modality'] == 'MR':
         log.info("Determining MR Classification...")
-        classification = classify_dicom(dcm, slice_number, uniqueiop)
+        classification = classify_dicom(dcm, slice_number, acquisition.get('label'), unique_iop=uniqueiop)
         
         if classification:
             dcm_metadata['classification'] = classification
