@@ -37,7 +37,8 @@ def test_classify_on_a_sample_MR():
 def test_classify_using_acquisition_label():
     dcm = pydicom.read_file(get_testdata_files()[0])
     acquisition = flywheel.Acquisition(label="T2 FLAIR")
-    del dcm.SeriesDescription
+    if hasattr(dcm, "SeriesDescription"):
+        del dcm.SeriesDescription
     with tempfile.TemporaryFile(suffix='.dcm') as fp:
         dcm.save_as(fp)
         dcm_metadata = {
