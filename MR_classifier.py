@@ -318,6 +318,14 @@ def is_post(label):
             found = True
     return found
 
+# Susceptibility Weighted
+def is_swi(label):
+    regexes = [
+        re.compile('swi', re.IGNORECASE),
+        re.compile('susceptibility', re.IGNORECASE),
+        ]
+    return common_utils.regex_search_label(regexes, label)
+
 
 def infer_classification(label):
     """
@@ -355,6 +363,9 @@ def infer_classification(label):
             classification['Measurement'] = ['T2']
         elif is_anatomy(label):
             classification['Intent'] = ['Structural']
+        elif is_swi(label):
+            classification['Intent'] = ['Structural']
+            classification['Measurement'] = ['Susceptibility']
         elif common_utils.is_localizer(label):
             classification['Intent'] = ['Localizer']
             classification['Measurement'] = ['T2']
