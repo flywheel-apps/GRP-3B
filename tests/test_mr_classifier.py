@@ -2,9 +2,10 @@ import tempfile
 import pandas as pd
 from pydicom.data import get_testdata_files
 import pydicom
+import pytest
 
 from MR_classifier import classify_MR, _find_matches, intent_check, \
-    measurement_check, feature_check, iop_is_unique
+    measurement_check, feature_check, iop_is_unique, infer_classification
 
 
 def test_classify_on_a_sample_MR():
@@ -76,3 +77,12 @@ def test_iop_is_unique():
     assert not iop_is_unique(pd.Series([[0]*6]))
     # test empty series
     assert not iop_is_unique(pd.Series(dtype="object"))
+
+
+@pytest.mark.parametrize(
+    'label', ['swi', 'susceptibility', 'blah_SWI_blah', 'Susceptibility Whatever Map']
+)
+def test_swi_classification(label):
+    classification = infer_classification(label)
+    assert classification['Intent'] == ['Structural']
+    assert classification['Measurement'] == ['Susceptibility']
