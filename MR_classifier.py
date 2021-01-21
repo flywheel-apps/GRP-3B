@@ -589,6 +589,8 @@ def classify_dicom(dcm, slice_number, acquisition_label, unique_iop=None):
     classification_dict = {}
     series_desc = dicom_processor.format_string(dcm.get('SeriesDescription', ''))
 
+    # acquisition_label gets precedence over series_desc for classification.
+
     # 1. Custom classification from context
     if acquisition_label or series_desc:  # acquisition_label gets precedence
         classification_dict = get_custom_classification(acquisition_label, '/flywheel/v0/config.json')
