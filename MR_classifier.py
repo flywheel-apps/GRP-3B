@@ -589,24 +589,22 @@ def classify_dicom(dcm, slice_number, acquisition_label, unique_iop=None):
     classification_dict = {}
     series_desc = dicom_processor.format_string(dcm.get('SeriesDescription', ''))
 
-    # acquisition_label gets precedence over series_desc for classification.
-
-    # 1. Custom classification from context
-    if acquisition_label or series_desc:  # acquisition_label gets precedence
+    if acquisition_label or series_desc:
+        # 1. Custom classification from context
         classification_dict = get_custom_classification(acquisition_label, '/flywheel/v0/config.json')
-        if not classification_dict and series_desc:
+        if not classification_dict and series_desc:    # acquisition_label gets precedence
             classification_dict = get_custom_classification(series_desc, '/flywheel/v0/config.json')
         if classification_dict:
             log.info('Custom classification from config: %s', classification_dict)
 
-    # 2. Classification from SeriesDescription or acquisition_label
-    if not classification_dict and (series_desc or acquisition_label):
-        if acquisition_label:
-            classification_dict = infer_classification(acquisition_label)
-        if not classification_dict and series_desc:
-            classification_dict = infer_classification(series_desc)
-        if classification_dict:
-            log.info('Inferred classification from label: %s', classification_dict)
+        # 2. Classification from SeriesDescription or acquisition_label
+        if not classification_dict:
+            if acquisition_label:
+                classification_dict = infer_classification(acquisition_label)
+            if not classification_dict and series_desc:    # acquisition_label gets precedence
+                classification_dict = infer_classification(series_desc)
+            if classification_dict:
+                log.info('Inferred classification from label: %s', classification_dict)
 
     # 3. Classification from Imaging params
     if not classification_dict:
