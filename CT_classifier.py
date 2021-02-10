@@ -25,13 +25,13 @@ def classify_CT(df, dcm_metadata, acquisition):
     info_object = {}
     
     if common_utils.is_localizer(acquisition.label) or common_utils.is_localizer(series_description) or len(df) < 10:
-        classification['Scan Type'] = ['Localizer']
+        classification['Scan type'] = ['Localizer']
     else:
-        classification['Scan Type'] = \
+        classification['Scan type'] = \
             common_utils.get_scan_type_classification(
             acquisition.label, header_dicom)
-        if not classification['Scan Type']:
-            classification['Scan Type'] = \
+        if not classification['Scan type']:
+            classification['Scan type'] = \
                 common_utils.get_scan_type_classification(
                 series_description, header_dicom)
 
