@@ -59,12 +59,16 @@ def compute_scan_coverage(df):
     )
     dicom_std_link = \
         "https://dicom.innolitics.com/ciods/pet-image/image-plane/00200032"
+    scan_coverage = None
+    max_slice_location = None
+    min_slice_location = None
+
     if 'ImagePositionPatient' not in df.keys():
         log.error(
             f"Cannot compute scan coverage. 'ImagePositionPatient' not in "
             f"dataframe (dicom headers). This is required. See "
             f"{dicom_std_link}")
-        return None
+        return (scan_coverage, max_slice_location, min_slice_location)
 
     image_positions = df['ImagePositionPatient']
 
@@ -74,13 +78,15 @@ def compute_scan_coverage(df):
             f"Cannot compute scan coverage.. Some or all "
             f"'ImagePositionPatient' values of dicom slices "
             f"are missing. This is required. See {dicom_std_link}")
-        return None
+        return (scan_coverage, max_slice_location, min_slice_location)
+
     # Check if all values are type list. Log type error if not.
     if not all(image_positions.apply(lambda x: type(x) == list)):
         log.error(
             f"Cannot compute scan coverage. Some or all "
             f"'ImagePositionPatient' values are not type 'list'.")
-        return None
+        return (scan_coverage, max_slice_location, min_slice_location)
+
     # Check if all lists are at least length 3. Log missing
     # values error if not.
     if not all(image_positions.apply(lambda x: len(x) == 3)):
@@ -89,7 +95,8 @@ def compute_scan_coverage(df):
             f"'ImagePositionPatient' values of dicom slices "
             f"are not length 3. This is required. See"
             f" {dicom_std_link}")
-        return None
+        return (scan_coverage, max_slice_location, min_slice_location)
+
     # Check that all values in the z axis are type float
     if not all(image_positions.apply(lambda x:
                                  type(x[2]) == float)):
@@ -97,16 +104,18 @@ def compute_scan_coverage(df):
             f"Cannot compute scan coverage. Some or all "
             f"'ImagePositionPatient' z-axis values of dicom "
             f"slices are not type 'float'.")
-        return None
+        return (scan_coverage, max_slice_location, min_slice_location)
 
     # Compute scan coverage if all conditions are met
     z_position = image_positions.apply(lambda x: x[2])
-    result = z_position.max() - z_position.min()
+    max_slice_location = z_position.max()
+    min_slice_location = z_position.min()
+    result = max_slice_location - min_slice_location
     scan_coverage = result if result > 0 else result * -1
     log.info(
         f"Computed scan coverage ({scan_coverage})")
 
-    return (scan_coverage, z_position.max(), z_position.min())
+    return (scan_coverage, max_slice_location, min_slice_location)
 
 
 # Utility:  Check a list of regexes for truthyness
@@ -809,10 +818,11 @@ def classify_anatomy(classification, acquisition, series_description,
                  "description...")
         anatomy_classification = get_anatomy_from_label(series_description)
 
-    if not anatomy_classification:
-        log.info("Could not classify. Attempting to classify from scan "
-                 "coverage...")
-        anatomy_classification = get_anatomy_from_scan_coverage(scan_coverage)
+    # # Not using the scan coverage based anatomy classification anymore
+    #if not anatomy_classification:
+    #    log.info("Could not classify. Attempting to classify from scan "
+    #             "coverage...")
+    #    anatomy_classification = get_anatomy_from_scan_coverage(scan_coverage)
 
     if anatomy_classification:
         log.info(f"Classified as {anatomy_classification}")
@@ -846,16 +856,15 @@ def get_scan_type_classification(label, single_header_object):
 
 
 def get_scan_orientation(label):
-    scan_orientation = None
+    scan_orientation = []
     if is_axial(label):
-        scan_orientation = 'axial'
+        scan_orientation.append('Axial')
     elif is_coronal(label):
-        scan_orientation = 'coronal'
+        scan_orientation.append('Coronal')
     elif is_sagittal(label):
-        scan_orientation = 'sagittal'
+        scan_orientation.append('Sagittal')
 
-    if scan_orientation:
-        return scan_orientation
+    return scan_orientation
 
 
 # -----------------------------------------------------------------------------
