@@ -35,7 +35,7 @@ def classify_CT(df, dcm_metadata, acquisition):
                 common_utils.get_scan_type_classification(
                 series_description, header_dicom)
 
-        # Compute scan coverage
+        # # Compute scan coverage
         scan_coverage, info_object = \
             common_utils.compute_scan_coverage_if_original(header_dicom, df,
                                                            info_object)
@@ -47,22 +47,18 @@ def classify_CT(df, dcm_metadata, acquisition):
         if reconstruction_window:
             info_object['ReconstructionWindow'] = reconstruction_window
         
-        # # Scan orientation 
-        scan_orientation = None
-        scan_orientation = common_utils.get_scan_orientation(acquisition.label)
-        if scan_orientation:
-            info_object['ScanOrientation'] = scan_orientation
-        else:
-            scan_orientation = common_utils.get_scan_orientation(
+        # # Classify Scan orientation 
+        classification['Scan Orientation'] = common_utils.get_scan_orientation(acquisition.label)
+        if not classification['Scan Orientation']:
+            classification['Scan Orientation'] = common_utils.get_scan_orientation(
                 series_description)
-            if scan_orientation:
-                info_object['ScanOrientation'] = scan_orientation
-
-        # Classify Anatomy
+            
+            
+        # # Classify Anatomy
         classification = common_utils.classify_anatomy(
             classification, acquisition, series_description, scan_coverage)
 
-        # # Contrast
+        # # Classify Contrast
         classification['Contrast'] = common_utils.get_contrast_classification(
             acquisition.label)
         if not classification['Contrast']:
@@ -70,6 +66,39 @@ def classify_CT(df, dcm_metadata, acquisition):
                 common_utils.get_contrast_classification(
                 series_description)
 
+
+
+        # # Set Custom classification to 'TriggerGRP-19' if any of the CT classification keys is absent or empty:
+        if 'Scan Orientation' not in classification.keys():
+            classification['Custom'] = ['Unknown']
+        elif not classification['Scan Orientation']:
+            classification['Custom'] = ['Unknown']
+        else:
+            # If classification exists  then create an info tag 
+            # to indicate the source of Scan Orientation classification
+            info_object['ScanOrientationSource'] = 'Original'
+
+        if 'Contrast' not in classification.keys():
+            classification['Custom'] = ['Unknown']
+        elif not classification['Contrast']:
+            classification['Custom'] = ['Unknown']
+        else:
+            # If classification exists  then create an info tag 
+            # to indicate the source of Contrast classification
+            info_object['ContrastSource'] = 'Original'
+
+        if 'Anatomy' not in classification.keys():
+            classification['Custom'] = ['Unknown']
+        elif not classification['Anatomy']:
+            classification['Custom'] = ['Unknown']
+        else:
+            # If classification exists  then create an info tag 
+            # to indicate the source of Anatomy classification
+            info_object['AnatomySource'] = 'Original'
+
+
+
+        # # Scan Coverage
         if scan_coverage:
             spacing_between_slices = scan_coverage / len(df)
             info_object['SpacingBetweenSlices'] = round(spacing_between_slices, 2)
