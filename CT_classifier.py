@@ -78,7 +78,7 @@ def classify_CT(df, dcm_metadata, acquisition):
             # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Scan Orientation classification
             # This classification_source dict is then added to info object
-            classification_source['ScanOrientationSource'] = 'Original'
+            classification_source['Scan Orientation'] = 'Original'
 
         if 'Contrast' not in classification.keys():
             classification['Custom'] = ['Unknown']
@@ -88,7 +88,7 @@ def classify_CT(df, dcm_metadata, acquisition):
             # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Contrast classification
             # This classification_source dict is then added to info object
-            classification_source['ContrastSource'] = 'Original'
+            classification_source['Contrast'] = 'Original'
 
         if 'Anatomy' not in classification.keys():
             classification['Custom'] = ['Unknown']
@@ -98,7 +98,7 @@ def classify_CT(df, dcm_metadata, acquisition):
             # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Anatomy classification
             # This classification_source dict is then added to info object
-            classification_source['AnatomySource'] = 'Original'
+            classification_source['Anatomy'] = 'Original'
 
 
         # # Scan Coverage
