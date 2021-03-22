@@ -21,6 +21,7 @@ def classify_CT(df, dcm_metadata, acquisition):
     log.info("Determining CT Classification...")
     header_dicom = dcm_metadata['info']['header']['dicom']
     series_description = header_dicom.get('SeriesDescription') or ''
+    classification_source = {}
     classification = {}
     info_object = {}
     
@@ -68,34 +69,36 @@ def classify_CT(df, dcm_metadata, acquisition):
 
 
 
-        # # Set Custom classification to 'TriggerGRP-19' if any of the CT classification keys is absent or empty:
+        # # Set Custom classification to 'Unknown' if any of the CT classification keys is absent or empty:
         if 'Scan Orientation' not in classification.keys():
             classification['Custom'] = ['Unknown']
         elif not classification['Scan Orientation']:
             classification['Custom'] = ['Unknown']
         else:
-            # If classification exists  then create an info tag 
+            # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Scan Orientation classification
-            info_object['ScanOrientationSource'] = 'Original'
+            # This classification_source dict is then added to info object
+            classification_source['Scan Orientation'] = 'Original'
 
         if 'Contrast' not in classification.keys():
             classification['Custom'] = ['Unknown']
         elif not classification['Contrast']:
             classification['Custom'] = ['Unknown']
         else:
-            # If classification exists  then create an info tag 
+            # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Contrast classification
-            info_object['ContrastSource'] = 'Original'
+            # This classification_source dict is then added to info object
+            classification_source['Contrast'] = 'Original'
 
         if 'Anatomy' not in classification.keys():
             classification['Custom'] = ['Unknown']
         elif not classification['Anatomy']:
             classification['Custom'] = ['Unknown']
         else:
-            # If classification exists  then create an info tag 
+            # If classification exists  then create a tag in classification_source dict 
             # to indicate the source of Anatomy classification
-            info_object['AnatomySource'] = 'Original'
-
+            # This classification_source dict is then added to info object
+            classification_source['Anatomy'] = 'Original'
 
 
         # # Scan Coverage
@@ -103,6 +106,7 @@ def classify_CT(df, dcm_metadata, acquisition):
             spacing_between_slices = scan_coverage / len(df)
             info_object['SpacingBetweenSlices'] = round(spacing_between_slices, 2)
         
+        info_object['ClassificationSource'] = classification_source
         dcm_metadata['info'].update(info_object)
 
     dcm_metadata['classification'] = classification
