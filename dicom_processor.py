@@ -233,7 +233,7 @@ def process_dicom(file_path, force=True):
             zip = zipfile.ZipFile(file_path)
             tmp_dir = tempfile.TemporaryDirectory().name
             zip.extractall(path=tmp_dir)
-            dcm_path_list = Path(tmp_dir).rglob('*')
+            dcm_path_list = sorted(Path(tmp_dir).rglob('*'))
             # keep only files
             dcm_path_list = [str(path) for path in dcm_path_list if os.path.isfile(path)]
         except Exception:
